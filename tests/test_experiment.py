@@ -32,5 +32,8 @@ def test_experiment_run_writes_artifacts(tmp_path: Path) -> None:
     assert (result.run_dir / "windows.csv").exists()
     assert (result.run_dir / "predictions.csv").exists()
     assert (result.run_dir / "report.html").exists()
+    report = (result.run_dir / "report.html").read_text(encoding="utf-8")
+    assert "Latency And Runtime" in report
+    assert "Provenance" in report
     assert result.metrics["calibration_time_s"] >= 0
     assert result.metrics["n_predictions"] > 0

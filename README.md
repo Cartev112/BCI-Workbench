@@ -17,6 +17,7 @@ pip install -e ".[dev]"
 bciworkbench validate examples/mi_synthetic.yml
 bciworkbench schema experiment
 bciworkbench run examples/mi_synthetic.yml
+bciworkbench compare runs/<run_a> runs/<run_b>
 bciworkbench stressbench examples/stressbench_mi.yml
 pytest
 ```
@@ -39,7 +40,7 @@ Implemented now:
 - Optional pyRiemann MDM adapter with dependency guard.
 - MNE Raw FIF source adapter and initial MOABB BNCI2014_001 adapter with optional dependency guards.
 - Basic decoder metrics and run reports.
-- CLI commands: `validate`, `schema`, `run`, `report`, and `stressbench`.
+- CLI commands: `validate`, `schema`, `run`, `report`, `compare`, and `stressbench`.
 
 Planned next:
 

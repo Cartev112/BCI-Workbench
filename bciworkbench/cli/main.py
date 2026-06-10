@@ -7,6 +7,7 @@ from pathlib import Path
 from bciworkbench.experiment import Experiment
 from bciworkbench.ontology.schema_export import experiment_json_schema, ontology_json_schema
 from bciworkbench.ontology.schemas import ConfigError, load_experiment_spec
+from bciworkbench.reports import compare_runs
 from bciworkbench.stressbench import run_stressbench
 
 
@@ -22,6 +23,10 @@ def main(argv: list[str] | None = None) -> int:
 
     report_parser = subparsers.add_parser("report", help="Print a run report path and metrics summary.")
     report_parser.add_argument("run_dir")
+
+    compare_parser = subparsers.add_parser("compare", help="Compare completed run directories.")
+    compare_parser.add_argument("run_dirs", nargs="+")
+    compare_parser.add_argument("--output-dir", "-o", default="runs")
 
     stressbench_parser = subparsers.add_parser("stressbench", help="Run a StressBench preset matrix.")
     stressbench_parser.add_argument("config")
@@ -55,6 +60,15 @@ def main(argv: list[str] | None = None) -> int:
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
             print(f"report: {report_path}")
             print(json.dumps(metrics, indent=2, sort_keys=True))
+            return 0
+
+        if args.command == "compare":
+            result = compare_runs(args.run_dirs, output_dir=args.output_dir)
+            print(f"comparison_dir: {result['comparison_dir']}")
+            print(f"runs: {result['run_count']}")
+            best_run = result.get("best_run") or {}
+            print(f"best_run: {best_run.get('run_id')}")
+            print(f"report: {result['comparison_dir'] / 'comparison_report.html'}")
             return 0
 
         if args.command == "stressbench":
