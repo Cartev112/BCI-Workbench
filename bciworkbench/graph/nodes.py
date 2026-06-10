@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from bciworkbench.decoders.simple import SupervisedDecoder
+from bciworkbench.decoders.sklearn import SklearnDecoder
 from bciworkbench.graph.context import RunContext
 from bciworkbench.graph.node import Node
 from bciworkbench.ontology.packets import FeaturePacket, SignalPacket, WindowPacket
@@ -56,8 +56,19 @@ class DecoderNode(Node):
         super().__init__("decoder.supervised", "decoder", params)
 
     def process(self, payload: list[FeaturePacket], context: RunContext):
-        result = SupervisedDecoder.from_params(self.params).fit_predict(payload)
+        decoder = SklearnDecoder.from_params(self.params)
+        result = decoder.fit_predict(payload)
+        model_path = context.run_dir / "model" / "decoder.pkl"
+        decoder.save(model_path)
+        result = type(result)(
+            predictions=result.predictions,
+            train_size=result.train_size,
+            test_size=result.test_size,
+            decoder_name=result.decoder_name,
+            calibration_time_s=result.calibration_time_s,
+            model_card={**decoder.model_card(), "model_path": str(model_path)},
+            model_path=model_path,
+        )
         context.artifacts["decoder_result"] = result
         context.artifacts["predictions"] = result.predictions
         return result
-

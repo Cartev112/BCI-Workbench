@@ -1,0 +1,57 @@
+schema_version: "0.1"
+name: mi_synthetic_logistic
+paradigm: motor_imagery
+mode: synthetic
+random_seed: 7
+output_dir: runs
+
+source:
+  type: synthetic_motor_imagery
+  duration_s: 150
+  sampling_rate: 250
+  n_channels: 16
+  n_trials: 80
+  trial_duration_s: 2.5
+  inter_trial_s: 0.5
+  snr_db: -4
+  subject:
+    alpha_peak_hz: 10.2
+    beta_peak_hz: 20.0
+    motor_imagery_vividness: 1.0
+    attention: 0.9
+    fatigue_rate: 0.001
+  session:
+    amplitude_drift: 0.05
+    electrode_shift_mm: 2.0
+    blink_rate_per_min: 6
+    blink_amplitude_uv: 80
+    muscle_noise: 0.05
+    channel_dropout_probability: 0.0
+    marker_jitter_ms: 4.0
+
+pipeline:
+  - type: window
+    length_s: 1.5
+    offset_s: 0.4
+  - type: bandpower
+    bands:
+      - name: mu
+        fmin: 8
+        fmax: 13
+      - name: beta
+        fmin: 13
+        fmax: 30
+  - type: decoder
+    estimator: logistic_regression
+    calibration_fraction: 0.6
+
+task:
+  type: motor_imagery_classification
+  classes: [left, right]
+
+metrics:
+  - accuracy
+  - balanced_accuracy
+  - mean_confidence
+  - calibration_time_s
+

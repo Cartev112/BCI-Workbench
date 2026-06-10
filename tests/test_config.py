@@ -44,6 +44,23 @@ def test_invalid_nested_source_key_is_rejected() -> None:
         )
 
 
+def test_invalid_decoder_estimator_is_rejected() -> None:
+    with pytest.raises(ConfigError, match="decoder estimator"):
+        parse_experiment_spec(
+            {
+                "name": "bad-decoder",
+                "paradigm": "motor_imagery",
+                "source": {"type": "synthetic_motor_imagery"},
+                "pipeline": [
+                    {"type": "window"},
+                    {"type": "bandpower"},
+                    {"type": "decoder", "estimator": "unknown"},
+                ],
+                "task": {"type": "motor_imagery_classification"},
+            }
+        )
+
+
 def test_experiment_json_schema_exports_required_config_shape() -> None:
     schema = experiment_json_schema()
     assert schema["required"] == ["name", "paradigm", "source", "pipeline", "task"]

@@ -148,6 +148,16 @@ def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
         raise ConfigError(f"unsupported pipeline step(s): {', '.join(unknown)}")
     if [step.type for step in pipeline] != ["window", "bandpower", "decoder"]:
         raise ConfigError("this milestone requires pipeline order: window, bandpower, decoder")
+    decoder_params = pipeline[-1].params
+    if decoder_params.get("estimator", "lda") not in {
+        "lda",
+        "logistic",
+        "logistic_regression",
+        "lr",
+        "nearest_centroid",
+        "centroid",
+    }:
+        raise ConfigError("pipeline decoder estimator must be lda, logistic_regression, or nearest_centroid")
 
     task_raw = _mapping(config.get("task"), "task")
     task_type = _string(task_raw.get("type"), "task.type")

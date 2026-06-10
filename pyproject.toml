@@ -20,6 +20,9 @@ dev = [
 sklearn = [
   "scikit-learn>=1.4",
 ]
+pyriemann = [
+  "pyriemann>=0.6",
+]
 
 [project.scripts]
 bciworkbench = "bciworkbench.cli.main:main"
@@ -30,4 +33,3 @@ include = ["bciworkbench*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-

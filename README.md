@@ -35,7 +35,8 @@ Implemented now:
 - StressBench preset matrix with aggregate robustness scoring for synthetic checks.
 - Deterministic synthetic motor imagery source with ground-truth trial events.
 - Windowing and bandpower feature extraction.
-- LDA decoder when scikit-learn is available, with a deterministic nearest-centroid fallback.
+- Sklearn-style decoder adapter with LDA, logistic regression, model persistence, model cards, and a deterministic nearest-centroid fallback.
+- Optional pyRiemann MDM adapter with dependency guard.
 - Basic decoder metrics and run reports.
 - CLI commands: `validate`, `schema`, `run`, `report`, and `stressbench`.
 

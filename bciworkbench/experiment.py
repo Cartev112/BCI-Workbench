@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from bciworkbench.decoders.simple import DecoderResult
+from bciworkbench.decoders.base import DecoderResult
 from bciworkbench.eval.metrics import decoder_metrics
 from bciworkbench.graph.context import RunContext
 from bciworkbench.graph.nodes import BandpowerNode, DecoderNode, SyntheticMotorImagerySourceNode, TrialWindowNode
@@ -65,6 +65,7 @@ class Experiment:
                 "train_size": decoder.train_size,
                 "test_size": decoder.test_size,
                 "decoder": decoder.decoder_name,
+                "calibration_time_s": decoder.calibration_time_s,
                 "n_events": len(signal.events),
                 "n_windows": len(windows),
                 "n_features": len(features),
@@ -78,6 +79,7 @@ class Experiment:
         write_json(run_dir / "channel_schema.json", signal.channel_schema.to_dict())
         write_json(run_dir / "source_metadata.json", signal.metadata)
         write_json(run_dir / "metrics.json", metrics)
+        write_json(run_dir / "model" / "model_card.json", decoder.model_card)
         write_json(run_dir / "provenance.json", provenance(spec))
         write_jsonl(run_dir / "telemetry.jsonl", [record.to_dict() for record in runtime.telemetry])
         write_events(run_dir / "events.csv", signal.events)
