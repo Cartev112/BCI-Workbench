@@ -26,6 +26,7 @@ bciworkbench run examples/p300_synthetic.yml
 bciworkbench run examples/mi_synthetic_adaptive.yml
 bciworkbench compare runs/<run_a> runs/<run_b>
 bciworkbench stressbench examples/stressbench_mi.yml
+bciworkbench stressbench examples/stressbench_architectures.yml
 pytest
 ```
 
@@ -41,6 +42,8 @@ Implemented now:
 - Deterministic linear graph runtime with node telemetry.
 - Explicit synthetic subject/session profiles with artifact, drift, timing, and ERP parameters.
 - StressBench preset matrix with aggregate robustness scoring for synthetic checks.
+- StressBench architecture cards for MI bandpower + LDA, MI covariance + optional pyRiemann MDM, and P300 ERP + LDA.
+- StressBench scores for accuracy robustness, decoder latency, and calibration efficiency.
 - Domain randomization helpers for sampling subject/session stressor ranges.
 - Deterministic synthetic motor imagery source with ground-truth trial events.
 - Deterministic synthetic P300 oddball source with target/non-target stimulus events.
@@ -60,4 +63,4 @@ Planned next:
 
 - LSL and BrainFlow live sources.
 - Broader closed-loop task environments and richer online decoder update backends.
-- Broader StressBench robustness sweeps and public benchmark presets.
+- Broader public benchmark presets and documentation guides.

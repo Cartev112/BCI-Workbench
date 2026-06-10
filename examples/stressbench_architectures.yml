@@ -1,0 +1,11 @@
+name: architecture_stressbench
+output_dir: runs
+repeats: 1
+seed_stride: 11
+architectures:
+  - mi_bandpower_lda
+  - p300_erp_lda
+presets:
+  - clean
+  - low_snr
+  - session_drift

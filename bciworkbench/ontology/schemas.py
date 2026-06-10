@@ -129,18 +129,21 @@ def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
         params = {key: value for key, value in step.items() if key != "type"}
         pipeline.append(PipelineStepSpec(type=step_type, params=params))
 
-    implemented_steps = {"window", "bandpower", "erp_features", "decoder"}
+    implemented_steps = {"window", "bandpower", "erp_features", "covariance", "decoder"}
     unknown = [step.type for step in pipeline if step.type not in implemented_steps]
     if unknown:
         raise ConfigError(f"unsupported pipeline step(s): {', '.join(unknown)}")
     if (
         len(pipeline) != 3
         or pipeline[0].type != "window"
-        or pipeline[1].type not in {"bandpower", "erp_features"}
+        or pipeline[1].type not in {"bandpower", "erp_features", "covariance"}
         or pipeline[-1].type != "decoder"
     ):
-        raise ConfigError("this milestone requires pipeline order: window, bandpower|erp_features, decoder")
+        raise ConfigError("this milestone requires pipeline order: window, bandpower|erp_features|covariance, decoder")
     decoder_params = pipeline[-1].params
+    adapter = decoder_params.get("adapter", "sklearn")
+    if adapter not in {"sklearn", "pyriemann"}:
+        raise ConfigError("pipeline decoder adapter must be sklearn or pyriemann")
     if decoder_params.get("estimator", "lda") not in {
         "lda",
         "logistic",
@@ -148,8 +151,10 @@ def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
         "lr",
         "nearest_centroid",
         "centroid",
+        "mdm",
+        "pyriemann_mdm",
     }:
-        raise ConfigError("pipeline decoder estimator must be lda, logistic_regression, or nearest_centroid")
+        raise ConfigError("pipeline decoder estimator must be lda, logistic_regression, nearest_centroid, or mdm")
 
     task_raw = _mapping(config.get("task"), "task")
     task_type = _string(task_raw.get("type"), "task.type")

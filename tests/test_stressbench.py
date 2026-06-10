@@ -13,6 +13,7 @@ from bciworkbench.stressbench import (
     robustness_summary,
     run_stressbench,
 )
+from bciworkbench.stressbench_cards import BUILTIN_ARCHITECTURES
 
 
 def test_builtin_presets_include_core_stressors() -> None:
@@ -27,6 +28,12 @@ def test_load_stressbench_spec_resolves_relative_base_config() -> None:
     assert spec.name == "mi_stressbench"
     assert spec.base_config.name == "mi_synthetic.yml"
     assert "low_snr" in spec.presets
+
+
+def test_builtin_architecture_cards_include_phase_12_targets() -> None:
+    assert "mi_bandpower_lda" in BUILTIN_ARCHITECTURES
+    assert "mi_covariance_pyriemann_mdm" in BUILTIN_ARCHITECTURES
+    assert "p300_erp_lda" in BUILTIN_ARCHITECTURES
 
 
 def test_run_stressbench_writes_summary(tmp_path: Path) -> None:
@@ -50,7 +57,9 @@ def test_run_stressbench_writes_summary(tmp_path: Path) -> None:
 
     assert len(result.rows) == 2
     assert len(result.aggregates) == 2
+    assert result.rows[0]["architecture"] == "mi_synthetic_baseline"
     assert result.robustness["robustness_score"] is not None
+    assert "architecture_scores" in result.robustness
     assert (result.summary_dir / "stressbench_summary.json").exists()
     assert (result.summary_dir / "stressbench_summary.csv").exists()
     assert (result.summary_dir / "stressbench_aggregates.csv").exists()
@@ -60,13 +69,39 @@ def test_run_stressbench_writes_summary(tmp_path: Path) -> None:
     assert "robustness" in payload
     aggregate_by_preset = {row["preset"]: row for row in payload["aggregates"]}
     assert aggregate_by_preset["low_snr"]["balanced_accuracy_mean"] <= aggregate_by_preset["clean"]["balanced_accuracy_mean"]
+    assert "stressbench_score" in aggregate_by_preset["low_snr"]
+
+
+def test_run_stressbench_builtin_architecture_card(tmp_path: Path) -> None:
+    stressbench_config = tmp_path / "stressbench_arch.yml"
+    stressbench_config.write_text(
+        "\n".join(
+            [
+                "name: test_architectures",
+                f"output_dir: {tmp_path}",
+                "repeats: 1",
+                "architectures:",
+                "  - p300_erp_lda",
+                "presets:",
+                "  - clean",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = run_stressbench(stressbench_config)
+
+    assert len(result.rows) == 1
+    assert result.rows[0]["architecture"] == "p300_erp_lda"
+    assert result.rows[0]["status"] == "ok"
+    assert result.aggregates[0]["stressbench_score"] is not None
 
 
 def test_aggregate_rows_scores_against_clean() -> None:
     rows = [
-        {"preset": "clean", "description": "clean", "accuracy": 1.0, "balanced_accuracy": 1.0},
-        {"preset": "clean", "description": "clean", "accuracy": 0.9, "balanced_accuracy": 0.9},
-        {"preset": "low_snr", "description": "low", "accuracy": 0.6, "balanced_accuracy": 0.6},
+        {"architecture": "arch", "preset": "clean", "description": "clean", "accuracy": 1.0, "balanced_accuracy": 1.0, "status": "ok"},
+        {"architecture": "arch", "preset": "clean", "description": "clean", "accuracy": 0.9, "balanced_accuracy": 0.9, "status": "ok"},
+        {"architecture": "arch", "preset": "low_snr", "description": "low", "accuracy": 0.6, "balanced_accuracy": 0.6, "status": "ok"},
     ]
     aggregates = aggregate_rows(rows)
     low_snr = next(row for row in aggregates if row["preset"] == "low_snr")

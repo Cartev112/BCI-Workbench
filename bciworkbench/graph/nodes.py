@@ -4,13 +4,14 @@ from typing import Any
 
 from bciworkbench.adaptation.factory import build_adaptation_adapter
 from bciworkbench.decoders.base import DecoderResult
+from bciworkbench.decoders.pyriemann import PyRiemannDecoder
 from bciworkbench.decoders.sklearn import SklearnDecoder
 from bciworkbench.graph.context import RunContext
 from bciworkbench.graph.node import Node
 from bciworkbench.ontology.packets import FeaturePacket, SignalPacket, WindowPacket
 from bciworkbench.sources.factory import build_source
 from bciworkbench.tasks.cursor import run_cursor_task
-from bciworkbench.transforms.features import BandpowerTransform, ERPFeatureTransform
+from bciworkbench.transforms.features import BandpowerTransform, CovarianceFeatureTransform, ERPFeatureTransform
 from bciworkbench.transforms.windowing import TrialWindowTransform
 
 
@@ -62,7 +63,7 @@ class DecoderNode(Node):
         super().__init__("decoder.supervised", "decoder", params)
 
     def process(self, payload: list[FeaturePacket], context: RunContext):
-        decoder = SklearnDecoder.from_params(self.params)
+        decoder = _decoder_adapter(self.params)
         result = decoder.fit_predict(payload)
         model_path = context.run_dir / "model" / "decoder.pkl"
         decoder.save(model_path)
@@ -128,4 +129,16 @@ def _feature_transform(step_type: str, params: dict[str, Any]):
         return BandpowerTransform.from_params(params)
     if step_type == "erp_features":
         return ERPFeatureTransform.from_params(params)
+    if step_type == "covariance":
+        return CovarianceFeatureTransform.from_params(params)
     raise ValueError(f"unsupported feature transform: {step_type}")
+
+
+def _decoder_adapter(params: dict[str, Any]):
+    adapter = str(params.get("adapter", "sklearn"))
+    estimator = str(params.get("estimator", "lda"))
+    if adapter == "pyriemann" or estimator in {"mdm", "pyriemann_mdm"}:
+        return PyRiemannDecoder.from_params(params)
+    if adapter == "sklearn":
+        return SklearnDecoder.from_params(params)
+    raise ValueError(f"unsupported decoder adapter: {adapter}")

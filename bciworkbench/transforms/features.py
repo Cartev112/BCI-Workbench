@@ -80,3 +80,35 @@ class ERPFeatureTransform:
                 )
             )
         return features
+
+
+class CovarianceFeatureTransform:
+    """Flattened channel covariance features for Riemannian decoders."""
+
+    @classmethod
+    def from_params(cls, params: dict) -> "CovarianceFeatureTransform":
+        del params
+        return cls()
+
+    def transform(self, windows: list[WindowPacket], sampling_rate: float) -> list[FeaturePacket]:
+        del sampling_rate
+        features: list[FeaturePacket] = []
+        for window in windows:
+            covariance = np.cov(window.data)
+            covariance = np.atleast_2d(covariance)
+            covariance += np.eye(covariance.shape[0]) * 1e-12
+            names = tuple(
+                f"cov_ch{row + 1}_ch{col + 1}"
+                for row in range(covariance.shape[0])
+                for col in range(covariance.shape[1])
+            )
+            features.append(
+                FeaturePacket(
+                    feature_id=f"features-{window.window_id}",
+                    features=covariance.reshape(-1).astype(float),
+                    feature_names=names,
+                    window_id=window.window_id,
+                    label=window.label,
+                )
+            )
+        return features

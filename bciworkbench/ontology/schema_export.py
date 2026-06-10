@@ -84,7 +84,23 @@ def experiment_json_schema() -> dict[str, Any]:
                 "items": {
                     "type": "object",
                     "required": ["type"],
-                    "properties": {"type": {"type": "string"}},
+                    "properties": {
+                        "type": {"type": "string"},
+                        "adapter": {"type": "string", "enum": ["sklearn", "pyriemann"]},
+                        "estimator": {
+                            "type": "string",
+                            "enum": [
+                                "lda",
+                                "logistic",
+                                "logistic_regression",
+                                "lr",
+                                "nearest_centroid",
+                                "centroid",
+                                "mdm",
+                                "pyriemann_mdm",
+                            ],
+                        },
+                    },
                     "additionalProperties": True,
                 },
             },
