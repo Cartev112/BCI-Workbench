@@ -7,7 +7,7 @@ from bciworkbench.graph.context import RunContext
 from bciworkbench.graph.node import Node
 from bciworkbench.ontology.packets import FeaturePacket, SignalPacket, WindowPacket
 from bciworkbench.sources.factory import build_source
-from bciworkbench.transforms.features import BandpowerTransform
+from bciworkbench.transforms.features import BandpowerTransform, ERPFeatureTransform
 from bciworkbench.transforms.windowing import TrialWindowTransform
 
 
@@ -36,15 +36,17 @@ class TrialWindowNode(Node):
         return windows
 
 
-class BandpowerNode(Node):
-    def __init__(self, params: dict[str, Any]) -> None:
-        super().__init__("transform.bandpower", "transform", params)
+class FeatureNode(Node):
+    def __init__(self, step_type: str, params: dict[str, Any]) -> None:
+        super().__init__(f"transform.{step_type}", "transform", params)
+        self.step_type = step_type
 
     def process(self, payload: list[WindowPacket], context: RunContext) -> list[FeaturePacket]:
         signal = context.artifacts.get("signal")
         if signal is None:
-            raise ValueError("BandpowerNode requires signal artifact for sampling rate")
-        features = BandpowerTransform.from_params(self.params).transform(
+            raise ValueError("FeatureNode requires signal artifact for sampling rate")
+        transform = _feature_transform(self.step_type, self.params)
+        features = transform.transform(
             payload,
             sampling_rate=signal.channel_schema.sampling_rate,
         )
@@ -73,3 +75,11 @@ class DecoderNode(Node):
         context.artifacts["decoder_result"] = result
         context.artifacts["predictions"] = result.predictions
         return result
+
+
+def _feature_transform(step_type: str, params: dict[str, Any]):
+    if step_type == "bandpower":
+        return BandpowerTransform.from_params(params)
+    if step_type == "erp_features":
+        return ERPFeatureTransform.from_params(params)
+    raise ValueError(f"unsupported feature transform: {step_type}")

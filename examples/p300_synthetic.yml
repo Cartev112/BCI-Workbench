@@ -1,0 +1,54 @@
+schema_version: "0.1"
+name: p300_synthetic_baseline
+paradigm: p300
+mode: synthetic
+random_seed: 13
+output_dir: runs
+
+source:
+  type: synthetic_p300
+  duration_s: 150
+  sampling_rate: 250
+  n_channels: 16
+  n_trials: 120
+  trial_duration_s: 0.8
+  inter_trial_s: 0.2
+  target_probability: 0.3
+  snr_db: -4
+  subject:
+    p300_amplitude_uv: 8.0
+    p300_latency_ms: 320
+    p300_latency_jitter_ms: 30
+    attention: 0.9
+    fatigue_rate: 0.001
+  session:
+    amplitude_drift: 0.05
+    spectral_drift_hz: 0.1
+    spatial_covariance_drift: 0.05
+    blink_rate_per_min: 8
+    blink_amplitude_uv: 80
+    muscle_noise: 0.03
+    channel_dropout_probability: 0.0
+    marker_jitter_ms: 4.0
+    feedback_delay_ms: 80
+
+pipeline:
+  - type: window
+    length_s: 0.7
+    offset_s: 0.0
+  - type: erp_features
+    n_bins: 10
+  - type: decoder
+    estimator: logistic_regression
+    calibration_fraction: 0.6
+
+task:
+  type: p300_classification
+  classes: [target, non_target]
+
+metrics:
+  - accuracy
+  - balanced_accuracy
+  - mean_confidence
+  - calibration_time_s
+

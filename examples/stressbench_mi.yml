@@ -9,6 +9,8 @@ presets:
   - high_blink
   - muscle_noise
   - channel_dropout
+  - electrode_shift
   - session_drift
   - jittery_markers
   - fatigue
+  - delayed_feedback

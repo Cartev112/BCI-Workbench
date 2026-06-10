@@ -19,6 +19,7 @@ def test_builtin_presets_include_core_stressors() -> None:
     assert "clean" in BUILTIN_PRESETS
     assert "low_snr" in BUILTIN_PRESETS
     assert "session_drift" in BUILTIN_PRESETS
+    assert "delayed_feedback" in BUILTIN_PRESETS
 
 
 def test_load_stressbench_spec_resolves_relative_base_config() -> None:
@@ -57,6 +58,8 @@ def test_run_stressbench_writes_summary(tmp_path: Path) -> None:
     payload = json.loads((result.summary_dir / "stressbench_summary.json").read_text(encoding="utf-8"))
     assert "aggregates" in payload
     assert "robustness" in payload
+    aggregate_by_preset = {row["preset"]: row for row in payload["aggregates"]}
+    assert aggregate_by_preset["low_snr"]["balanced_accuracy_mean"] <= aggregate_by_preset["clean"]["balanced_accuracy_mean"]
 
 
 def test_aggregate_rows_scores_against_clean() -> None:

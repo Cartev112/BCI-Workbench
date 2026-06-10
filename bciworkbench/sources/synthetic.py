@@ -144,6 +144,7 @@ class SyntheticMotorImagerySource:
             )
 
         artifact_events = self._apply_artifacts(rng, data, timestamps)
+        artifact_events.extend(self._dropout_events(bad_channels, cfg.duration_s, source_id="synthetic_motor_imagery"))
         events.extend(artifact_events)
 
         dropout_indices = [channel_names.index(name) for name in bad_channels]
@@ -169,6 +170,7 @@ class SyntheticMotorImagerySource:
                 "session": cfg.session.to_dict(),
                 "artifact_event_count": len(artifact_events),
                 "bad_channels": list(bad_channels),
+                "feedback_delay_ms": cfg.session.feedback_delay_ms,
             },
         )
 
@@ -177,14 +179,21 @@ class SyntheticMotorImagerySource:
         n_samples = timestamps.size
         data = rng.normal(0.0, 2.0e-6, size=(n_channels, n_samples))
         spatial = rng.normal(0.0, 1.0, size=(n_channels, 3))
+        spatial_drift = rng.normal(0.0, 1.0, size=(n_channels, 3))
+        ramp = np.linspace(0.0, cfg.session.spatial_covariance_drift, n_samples)
+        alpha_freq = cfg.subject.alpha_peak_hz + cfg.session.spectral_drift_hz * np.linspace(-0.5, 0.5, n_samples)
+        beta_freq = cfg.subject.beta_peak_hz + cfg.session.spectral_drift_hz * np.linspace(-0.5, 0.5, n_samples)
+        alpha_phase = 2 * np.pi * np.cumsum(alpha_freq) / cfg.sampling_rate
+        beta_phase = 2 * np.pi * np.cumsum(beta_freq) / cfg.sampling_rate
         sources = np.vstack(
             [
                 np.sin(2 * np.pi * 6.0 * timestamps + rng.uniform(0, 2 * np.pi)),
-                np.sin(2 * np.pi * cfg.subject.alpha_peak_hz * timestamps + rng.uniform(0, 2 * np.pi)),
-                np.sin(2 * np.pi * cfg.subject.beta_peak_hz * timestamps + rng.uniform(0, 2 * np.pi)),
+                np.sin(alpha_phase + rng.uniform(0, 2 * np.pi)),
+                np.sin(beta_phase + rng.uniform(0, 2 * np.pi)),
             ]
         )
         data += 5.0e-6 * spatial @ sources
+        data += 2.0e-6 * (spatial_drift @ sources) * ramp[None, :]
         data += 0.8e-6 * np.sin(2 * np.pi * cfg.line_noise_hz * timestamps)[None, :]
         return data
 
@@ -207,13 +216,42 @@ class SyntheticMotorImagerySource:
             mask[rng.integers(0, len(channel_names))] = False
         return tuple(name for name, dropped in zip(channel_names, mask, strict=True) if dropped)
 
-    def _apply_artifacts(self, rng: np.random.Generator, data: np.ndarray, timestamps: np.ndarray) -> list[Event]:
+    @staticmethod
+    def _dropout_events(bad_channels: tuple[str, ...], duration_s: float, source_id: str) -> list[Event]:
+        return [
+            Event(
+                event_id=f"artifact-dropout-{index:04d}",
+                event_type="artifact.dropout",
+                name="synthetic_channel_dropout",
+                onset=0.0,
+                duration=duration_s,
+                sample_index=0,
+                source=source_id,
+                target=channel,
+                metadata={"channel": channel},
+            )
+            for index, channel in enumerate(bad_channels)
+        ]
+
+    def _apply_artifacts(
+        self,
+        rng: np.random.Generator,
+        data: np.ndarray,
+        timestamps: np.ndarray,
+        source_id: str = "synthetic_motor_imagery",
+    ) -> list[Event]:
         events: list[Event] = []
-        events.extend(self._apply_blinks(rng, data, timestamps))
-        events.extend(self._apply_muscle_noise(rng, data, timestamps))
+        events.extend(self._apply_blinks(rng, data, timestamps, source_id=source_id))
+        events.extend(self._apply_muscle_noise(rng, data, timestamps, source_id=source_id))
         return events
 
-    def _apply_blinks(self, rng: np.random.Generator, data: np.ndarray, timestamps: np.ndarray) -> list[Event]:
+    def _apply_blinks(
+        self,
+        rng: np.random.Generator,
+        data: np.ndarray,
+        timestamps: np.ndarray,
+        source_id: str,
+    ) -> list[Event]:
         cfg = self.config
         if cfg.session.blink_rate_per_min <= 0:
             return []
@@ -236,13 +274,19 @@ class SyntheticMotorImagerySource:
                     onset=onset,
                     duration=width_s * 4.0,
                     sample_index=sample_index,
-                    source="synthetic_motor_imagery",
+                    source=source_id,
                     metadata={"amplitude_uv": amplitude * 1e6},
                 )
             )
         return events
 
-    def _apply_muscle_noise(self, rng: np.random.Generator, data: np.ndarray, timestamps: np.ndarray) -> list[Event]:
+    def _apply_muscle_noise(
+        self,
+        rng: np.random.Generator,
+        data: np.ndarray,
+        timestamps: np.ndarray,
+        source_id: str,
+    ) -> list[Event]:
         cfg = self.config
         if cfg.session.muscle_noise <= 0:
             return []
@@ -266,7 +310,7 @@ class SyntheticMotorImagerySource:
                     onset=onset,
                     duration=duration,
                     sample_index=start,
-                    source="synthetic_motor_imagery",
+                    source=source_id,
                     metadata={"severity": cfg.session.muscle_noise},
                 )
             )

@@ -61,7 +61,12 @@ BUILTIN_PRESETS: dict[str, StressorPreset] = {
     "session_drift": StressorPreset(
         name="session_drift",
         description="Amplitude drift and electrode shift across the session.",
-        source_overrides={"session": {"amplitude_drift": 0.3, "electrode_shift_mm": 9.0}},
+        source_overrides={"session": {"amplitude_drift": 0.3, "electrode_shift_mm": 9.0, "spectral_drift_hz": 0.4, "spatial_covariance_drift": 0.4}},
+    ),
+    "electrode_shift": StressorPreset(
+        name="electrode_shift",
+        description="Spatial shift in class topographies without major amplitude drift.",
+        source_overrides={"session": {"electrode_shift_mm": 12.0, "spatial_covariance_drift": 0.25}},
     ),
     "jittery_markers": StressorPreset(
         name="jittery_markers",
@@ -72,6 +77,11 @@ BUILTIN_PRESETS: dict[str, StressorPreset] = {
         name="fatigue",
         description="Attention drop through trial-index-linked fatigue.",
         source_overrides={"subject": {"attention": 0.75, "fatigue_rate": 0.01}},
+    ),
+    "delayed_feedback": StressorPreset(
+        name="delayed_feedback",
+        description="Feedback delay stressor logged for closed-loop compatibility.",
+        source_overrides={"session": {"feedback_delay_ms": 220.0}},
     ),
 }
 

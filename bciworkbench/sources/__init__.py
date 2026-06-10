@@ -2,6 +2,7 @@ from bciworkbench.sources.base import OptionalDependencyError, SignalSource
 from bciworkbench.sources.factory import build_source
 from bciworkbench.sources.mne import MNERawSource
 from bciworkbench.sources.moabb import MOABBSource
+from bciworkbench.sources.p300 import SyntheticP300Source
 from bciworkbench.sources.synthetic import SyntheticMotorImagerySource
 
 __all__ = [
@@ -10,5 +11,6 @@ __all__ = [
     "OptionalDependencyError",
     "SignalSource",
     "SyntheticMotorImagerySource",
+    "SyntheticP300Source",
     "build_source",
 ]

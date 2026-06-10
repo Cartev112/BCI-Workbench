@@ -105,8 +105,8 @@ def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
     source_raw = _mapping(config.get("source"), "source")
     source_type = _string(source_raw.get("type"), "source.type")
     source_params = {key: value for key, value in source_raw.items() if key != "type"}
-    if source_type not in {"synthetic_motor_imagery", "mne_raw", "moabb"}:
-        raise ConfigError("source.type must be one of: synthetic_motor_imagery, mne_raw, moabb")
+    if source_type not in {"synthetic_motor_imagery", "synthetic_p300", "mne_raw", "moabb"}:
+        raise ConfigError("source.type must be one of: synthetic_motor_imagery, synthetic_p300, mne_raw, moabb")
     allowed_source_keys = _allowed_source_keys(source_type)
     _validate_keys(source_params, allowed_source_keys, "source")
     _validate_source_params(source_type, source_params)
@@ -121,12 +121,17 @@ def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
         params = {key: value for key, value in step.items() if key != "type"}
         pipeline.append(PipelineStepSpec(type=step_type, params=params))
 
-    implemented_steps = {"window", "bandpower", "decoder"}
+    implemented_steps = {"window", "bandpower", "erp_features", "decoder"}
     unknown = [step.type for step in pipeline if step.type not in implemented_steps]
     if unknown:
         raise ConfigError(f"unsupported pipeline step(s): {', '.join(unknown)}")
-    if [step.type for step in pipeline] != ["window", "bandpower", "decoder"]:
-        raise ConfigError("this milestone requires pipeline order: window, bandpower, decoder")
+    if (
+        len(pipeline) != 3
+        or pipeline[0].type != "window"
+        or pipeline[1].type not in {"bandpower", "erp_features"}
+        or pipeline[-1].type != "decoder"
+    ):
+        raise ConfigError("this milestone requires pipeline order: window, bandpower|erp_features, decoder")
     decoder_params = pipeline[-1].params
     if decoder_params.get("estimator", "lda") not in {
         "lda",
@@ -140,8 +145,8 @@ def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
 
     task_raw = _mapping(config.get("task"), "task")
     task_type = _string(task_raw.get("type"), "task.type")
-    if task_type != "motor_imagery_classification":
-        raise ConfigError("only task.type=motor_imagery_classification is implemented in this milestone")
+    if task_type not in {"motor_imagery_classification", "p300_classification"}:
+        raise ConfigError("task.type must be one of: motor_imagery_classification, p300_classification")
     task_params = {key: value for key, value in task_raw.items() if key != "type"}
 
     metrics_raw = config.get("metrics", [])
@@ -178,19 +183,9 @@ def load_experiment_spec(path: str | Path) -> ExperimentSpec:
 
 def _allowed_source_keys(source_type: str) -> set[str]:
     if source_type == "synthetic_motor_imagery":
-        return {
-            "duration_s",
-            "sampling_rate",
-            "n_channels",
-            "n_trials",
-            "trial_duration_s",
-            "inter_trial_s",
-            "snr_db",
-            "drift",
-            "line_noise_hz",
-            "subject",
-            "session",
-        }
+        return _synthetic_common_source_keys() | {"drift"}
+    if source_type == "synthetic_p300":
+        return _synthetic_common_source_keys() | {"target_probability"}
     if source_type == "mne_raw":
         return {"path", "preload", "event_id_prefix"}
     if source_type == "moabb":
@@ -198,8 +193,23 @@ def _allowed_source_keys(source_type: str) -> set[str]:
     return set()
 
 
+def _synthetic_common_source_keys() -> set[str]:
+    return {
+        "duration_s",
+        "sampling_rate",
+        "n_channels",
+        "n_trials",
+        "trial_duration_s",
+        "inter_trial_s",
+        "snr_db",
+        "line_noise_hz",
+        "subject",
+        "session",
+    }
+
+
 def _validate_source_params(source_type: str, source_params: dict[str, Any]) -> None:
-    if source_type == "synthetic_motor_imagery":
+    if source_type in {"synthetic_motor_imagery", "synthetic_p300"}:
         if "sampling_rate" in source_params:
             _positive_number(source_params["sampling_rate"], "source.sampling_rate")
         if "duration_s" in source_params:
@@ -210,6 +220,10 @@ def _validate_source_params(source_type: str, source_params: dict[str, Any]) -> 
         if "session" in source_params:
             session = _mapping(source_params["session"], "source.session")
             _validate_keys(session, set(SessionProfile().__dict__), "source.session")
+        if "target_probability" in source_params:
+            probability = _number(source_params["target_probability"], "source.target_probability")
+            if not 0 < probability < 1:
+                raise ConfigError("source.target_probability must be between 0 and 1")
     elif source_type == "mne_raw":
         _string(source_params.get("path"), "source.path")
     elif source_type == "moabb":

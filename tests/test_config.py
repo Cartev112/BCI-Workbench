@@ -44,6 +44,32 @@ def test_invalid_nested_source_key_is_rejected() -> None:
         )
 
 
+def test_motor_imagery_rejects_p300_only_source_key() -> None:
+    with pytest.raises(ConfigError, match="target_probability"):
+        parse_experiment_spec(
+            {
+                "name": "bad-mi-source",
+                "paradigm": "motor_imagery",
+                "source": {"type": "synthetic_motor_imagery", "target_probability": 0.25},
+                "pipeline": [{"type": "window"}, {"type": "bandpower"}, {"type": "decoder"}],
+                "task": {"type": "motor_imagery_classification"},
+            }
+        )
+
+
+def test_short_pipeline_is_rejected_cleanly() -> None:
+    with pytest.raises(ConfigError, match="pipeline order"):
+        parse_experiment_spec(
+            {
+                "name": "bad-pipeline",
+                "paradigm": "motor_imagery",
+                "source": {"type": "synthetic_motor_imagery"},
+                "pipeline": [{"type": "window"}, {"type": "decoder"}],
+                "task": {"type": "motor_imagery_classification"},
+            }
+        )
+
+
 def test_invalid_decoder_estimator_is_rejected() -> None:
     with pytest.raises(ConfigError, match="decoder estimator"):
         parse_experiment_spec(
@@ -67,3 +93,4 @@ def test_experiment_json_schema_exports_required_config_shape() -> None:
     assert "subject" in schema["properties"]["source"]["properties"]
     assert "mne_raw" in schema["properties"]["source"]["properties"]["type"]["enum"]
     assert "moabb" in schema["properties"]["source"]["properties"]["type"]["enum"]
+    assert "synthetic_p300" in schema["properties"]["source"]["properties"]["type"]["enum"]

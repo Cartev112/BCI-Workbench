@@ -145,6 +145,7 @@ def test_json_schema_exports_include_core_ontology() -> None:
     ontology_schema = ontology_json_schema()
     assert experiment_schema["properties"]["source"]["properties"]["type"]["enum"] == [
         "synthetic_motor_imagery",
+        "synthetic_p300",
         "mne_raw",
         "moabb",
     ]
