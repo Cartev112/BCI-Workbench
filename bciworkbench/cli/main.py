@@ -21,6 +21,11 @@ def main(argv: list[str] | None = None) -> int:
     run_parser = subparsers.add_parser("run", help="Run an experiment YAML file.")
     run_parser.add_argument("config")
 
+    replay_parser = subparsers.add_parser("replay", help="Run a replay-mode experiment with optional speed overrides.")
+    replay_parser.add_argument("config")
+    replay_parser.add_argument("--speed-mode", choices=["fastest", "real_time", "scaled", "stepped"])
+    replay_parser.add_argument("--speed", type=float)
+
     report_parser = subparsers.add_parser("report", help="Print a run report path and metrics summary.")
     report_parser.add_argument("run_dir")
 
@@ -48,6 +53,17 @@ def main(argv: list[str] | None = None) -> int:
             print(f"run_id: {result.run_id}")
             print(f"run_dir: {result.run_dir}")
             print(f"accuracy: {result.metrics.get('accuracy')}")
+            print(f"report: {result.run_dir / 'report.html'}")
+            return 0
+
+        if args.command == "replay":
+            spec = _load_replay_spec(args.config, speed_mode=args.speed_mode, speed=args.speed)
+            result = Experiment(spec).run()
+            print(f"run_id: {result.run_id}")
+            print(f"run_dir: {result.run_dir}")
+            print(f"accuracy: {result.metrics.get('accuracy')}")
+            print(f"stream_health: {result.run_dir / 'stream_health.json'}")
+            print(f"latency_trace: {result.run_dir / 'latency_trace.csv'}")
             print(f"report: {result.run_dir / 'report.html'}")
             return 0
 
@@ -95,6 +111,32 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     return 1
+
+
+def _load_replay_spec(config: str, speed_mode: str | None = None, speed: float | None = None):
+    spec = load_experiment_spec(config)
+    if spec.mode != "replay":
+        raise ConfigError("replay command requires mode: replay")
+    params = dict(spec.source.params)
+    if speed_mode is not None:
+        params["speed_mode"] = speed_mode
+    if speed is not None:
+        if speed <= 0:
+            raise ConfigError("--speed must be positive")
+        params["speed"] = speed
+    return type(spec)(
+        schema_version=spec.schema_version,
+        name=spec.name,
+        paradigm=spec.paradigm,
+        mode=spec.mode,
+        source=type(spec.source)(type=spec.source.type, params=params),
+        pipeline=spec.pipeline,
+        task=spec.task,
+        metrics=spec.metrics,
+        random_seed=spec.random_seed,
+        output_dir=spec.output_dir,
+        metadata=spec.metadata,
+    )
 
 
 if __name__ == "__main__":

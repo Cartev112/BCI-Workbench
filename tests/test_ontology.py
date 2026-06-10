@@ -148,6 +148,7 @@ def test_json_schema_exports_include_core_ontology() -> None:
         "synthetic_p300",
         "mne_raw",
         "moabb",
+        "xdf_replay",
     ]
     assert "ChannelSchema" in ontology_schema["$defs"]
     assert "FeedbackPacket" in ontology_schema["$defs"]

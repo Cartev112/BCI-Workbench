@@ -105,8 +105,8 @@ def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
     source_raw = _mapping(config.get("source"), "source")
     source_type = _string(source_raw.get("type"), "source.type")
     source_params = {key: value for key, value in source_raw.items() if key != "type"}
-    if source_type not in {"synthetic_motor_imagery", "synthetic_p300", "mne_raw", "moabb"}:
-        raise ConfigError("source.type must be one of: synthetic_motor_imagery, synthetic_p300, mne_raw, moabb")
+    if source_type not in {"synthetic_motor_imagery", "synthetic_p300", "mne_raw", "moabb", "xdf_replay"}:
+        raise ConfigError("source.type must be one of: synthetic_motor_imagery, synthetic_p300, mne_raw, moabb, xdf_replay")
     allowed_source_keys = _allowed_source_keys(source_type)
     _validate_keys(source_params, allowed_source_keys, "source")
     _validate_source_params(source_type, source_params)
@@ -190,6 +190,18 @@ def _allowed_source_keys(source_type: str) -> set[str]:
         return {"path", "preload", "event_id_prefix"}
     if source_type == "moabb":
         return {"dataset", "subject", "paradigm"}
+    if source_type == "xdf_replay":
+        return {
+            "path",
+            "signal_stream",
+            "marker_stream",
+            "speed_mode",
+            "speed",
+            "chunk_duration_s",
+            "step_duration_s",
+            "processing_time_ms",
+            "queue_capacity",
+        }
     return set()
 
 
@@ -234,3 +246,22 @@ def _validate_source_params(source_type: str, source_params: dict[str, Any]) -> 
             subject = int(source_params["subject"])
             if subject <= 0:
                 raise ConfigError("source.subject must be positive")
+    elif source_type == "xdf_replay":
+        _string(source_params.get("path"), "source.path")
+        speed_mode = str(source_params.get("speed_mode", "fastest"))
+        if speed_mode not in {"fastest", "real_time", "scaled", "stepped"}:
+            raise ConfigError("source.speed_mode must be one of: fastest, real_time, scaled, stepped")
+        if "speed" in source_params:
+            _positive_number(source_params["speed"], "source.speed")
+        if "chunk_duration_s" in source_params:
+            _positive_number(source_params["chunk_duration_s"], "source.chunk_duration_s")
+        if "step_duration_s" in source_params:
+            number = _number(source_params["step_duration_s"], "source.step_duration_s")
+            if number < 0:
+                raise ConfigError("source.step_duration_s must be non-negative")
+        if "processing_time_ms" in source_params:
+            number = _number(source_params["processing_time_ms"], "source.processing_time_ms")
+            if number < 0:
+                raise ConfigError("source.processing_time_ms must be non-negative")
+        if "queue_capacity" in source_params and int(source_params["queue_capacity"]) <= 0:
+            raise ConfigError("source.queue_capacity must be positive")

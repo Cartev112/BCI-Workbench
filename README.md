@@ -4,11 +4,12 @@ BCI Workbench is a Python-first systems workbench for BCI architecture experimen
 
 The goal is to define a BCI pipeline once and run it against synthetic subjects, public datasets, recorded streams, replayed real-time streams, and live hardware while preserving comparable ontology, timing, metrics, and run artifacts.
 
-The current implementation supports two deterministic synthetic BCI paths:
+The current implementation supports deterministic synthetic BCI paths plus replay timing for recorded streams:
 
 ```text
 synthetic motor imagery -> trial windows -> bandpower features -> decoder -> metrics/report
 synthetic P300 oddball -> event windows -> ERP features -> decoder -> metrics/report
+XDF replay source -> replay scheduler -> existing window/feature/decoder pipeline -> latency/backlog artifacts
 ```
 
 ## Quickstart
@@ -25,7 +26,7 @@ bciworkbench stressbench examples/stressbench_mi.yml
 pytest
 ```
 
-The run command writes artifacts under `runs/<run_id>/`, including `ontology_schema.json`, `graph.json`, `telemetry.jsonl`, `source_metadata.json`, `metrics.json`, event/window/prediction CSV files, provenance, and a simple HTML report.
+The run command writes artifacts under `runs/<run_id>/`, including `ontology_schema.json`, `graph.json`, `telemetry.jsonl`, `source_metadata.json`, `metrics.json`, event/window/prediction CSV files, provenance, and a simple HTML report. Replay runs also write `latency_trace.csv`, `latency_trace.json`, and `stream_health.json`.
 
 ## Current Scope
 
@@ -44,11 +45,13 @@ Implemented now:
 - Sklearn-style decoder adapter with LDA, logistic regression, model persistence, model cards, and a deterministic nearest-centroid fallback.
 - Optional pyRiemann MDM adapter with dependency guard.
 - MNE Raw FIF source adapter and initial MOABB BNCI2014_001 adapter with optional dependency guards.
+- XDF replay adapter with deterministic fastest, real-time, scaled, and stepped scheduler modes.
+- Replay packet arrival, backlog, queue-depth, latency trace, and stream health artifacts.
 - Basic decoder metrics and run reports.
 - CLI commands: `validate`, `schema`, `run`, `report`, `compare`, and `stressbench`.
 
 Planned next:
 
-- Replay scheduler and XDF/LSL support.
+- LSL and BrainFlow live sources.
 - Closed-loop cursor task metrics.
 - Broader StressBench robustness sweeps and public benchmark presets.

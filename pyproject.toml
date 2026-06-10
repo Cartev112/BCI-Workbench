@@ -29,6 +29,9 @@ mne = [
 moabb = [
   "moabb>=1.0",
 ]
+xdf = [
+  "pyxdf>=1.16",
+]
 
 [project.scripts]
 bciworkbench = "bciworkbench.cli.main:main"

@@ -5,6 +5,7 @@ from bciworkbench.sources.mne import MNERawSource
 from bciworkbench.sources.moabb import MOABBSource
 from bciworkbench.sources.p300 import SyntheticP300Source
 from bciworkbench.sources.synthetic import SyntheticMotorImagerySource
+from bciworkbench.sources.xdf import XDFReplaySource
 
 
 def build_source(source: SourceSpec, seed: int):
@@ -16,4 +17,6 @@ def build_source(source: SourceSpec, seed: int):
         return MNERawSource.from_params(source.params)
     if source.type == "moabb":
         return MOABBSource.from_params(source.params)
+    if source.type == "xdf_replay":
+        return XDFReplaySource.from_params(source.params)
     raise ValueError(f"unsupported source type: {source.type}")

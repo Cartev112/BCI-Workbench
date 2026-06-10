@@ -102,6 +102,29 @@ def write_predictions(path: Path, predictions: list[IntentPacket]) -> None:
             )
 
 
+def write_latency_trace(path: Path, rows: list[dict[str, Any]]) -> None:
+    fieldnames = [
+        "packet_index",
+        "sample_start",
+        "sample_end",
+        "signal_time_start_s",
+        "signal_time_end_s",
+        "scheduled_arrival_s",
+        "arrival_time_s",
+        "arrival_delay_ms",
+        "backlog_ms",
+        "queue_depth",
+        "dropped",
+        "sleep_s",
+        "speed_mode",
+    ]
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key: row.get(key) for key in fieldnames})
+
+
 def provenance(spec: ExperimentSpec) -> dict[str, Any]:
     return {
         "experiment_name": spec.name,
@@ -115,6 +138,7 @@ def provenance(spec: ExperimentSpec) -> dict[str, Any]:
 def write_html_report(path: Path, spec: ExperimentSpec, metrics: dict[str, Any], decoder: DecoderResult) -> None:
     run_dir = path.parent
     source_metadata = _read_json_if_exists(run_dir / "source_metadata.json")
+    stream_health = _read_json_if_exists(run_dir / "stream_health.json")
     model_card = _read_json_if_exists(run_dir / "model" / "model_card.json") or decoder.model_card
     graph = _read_json_if_exists(run_dir / "graph.json")
     provenance_payload = _read_json_if_exists(run_dir / "provenance.json")
@@ -151,6 +175,8 @@ def write_html_report(path: Path, spec: ExperimentSpec, metrics: dict[str, Any],
   </table>
   <h2>Source</h2>
   {_dict_table(source_metadata)}
+  <h2>Replay Stream Health</h2>
+  {_dict_table(stream_health)}
   <h2>Model Card</h2>
   {_dict_table(model_card)}
   <h2>Latency And Runtime</h2>
@@ -162,7 +188,7 @@ def write_html_report(path: Path, spec: ExperimentSpec, metrics: dict[str, Any],
   <h2>Provenance</h2>
   {_dict_table(provenance_payload)}
   <h2>Run Artifacts</h2>
-  <p>See <code>metrics.json</code>, <code>model/model_card.json</code>, <code>model/decoder.pkl</code>, <code>graph.json</code>, <code>telemetry.jsonl</code>, <code>source_metadata.json</code>, <code>events.csv</code>, <code>windows.csv</code>, <code>features.csv</code>, and <code>predictions.csv</code>.</p>
+  <p>See <code>metrics.json</code>, <code>model/model_card.json</code>, <code>model/decoder.pkl</code>, <code>graph.json</code>, <code>telemetry.jsonl</code>, <code>source_metadata.json</code>, <code>stream_health.json</code>, <code>latency_trace.csv</code>, <code>events.csv</code>, <code>windows.csv</code>, <code>features.csv</code>, and <code>predictions.csv</code>.</p>
   <h2>Simulation Note</h2>
   <p>This milestone source is synthetic and intended for software plumbing and architecture testing. It is not a validated physiological model.</p>
 </body>
@@ -178,6 +204,7 @@ def summarize_run(run_dir: str | Path) -> dict[str, Any]:
         raise FileNotFoundError(f"missing metrics file: {metrics_path}")
     metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
     source_metadata = _read_json_if_exists(run_path / "source_metadata.json")
+    stream_health = _read_json_if_exists(run_path / "stream_health.json")
     provenance_payload = _read_json_if_exists(run_path / "provenance.json")
     model_card = _read_json_if_exists(run_path / "model" / "model_card.json")
     telemetry = _read_jsonl_if_exists(run_path / "telemetry.jsonl")
@@ -197,6 +224,9 @@ def summarize_run(run_dir: str | Path) -> dict[str, Any]:
         "mean_decoder_latency_ms": metrics.get("mean_decoder_latency_ms"),
         "runtime_total_duration_ms": latency.get("runtime_total_duration_ms"),
         "runtime_slowest_node": latency.get("runtime_slowest_node"),
+        "replay_packet_count": stream_health.get("packet_count"),
+        "replay_max_backlog_ms": stream_health.get("max_backlog_ms"),
+        "replay_max_queue_depth": stream_health.get("max_queue_depth"),
         "n_events": metrics.get("n_events"),
         "n_windows": metrics.get("n_windows"),
         "n_predictions": metrics.get("n_predictions"),
@@ -255,6 +285,9 @@ def _run_warnings(source_metadata: dict[str, Any], metrics: dict[str, Any]) -> l
         warnings.append("Balanced accuracy is below 0.75.")
     if source_metadata.get("bad_channels"):
         warnings.append(f"Bad channels present: {', '.join(source_metadata['bad_channels'])}")
+    stream_health = source_metadata.get("stream_health") or {}
+    if stream_health.get("dropped_packets"):
+        warnings.append(f"Replay dropped packets: {stream_health['dropped_packets']}")
     return warnings
 
 

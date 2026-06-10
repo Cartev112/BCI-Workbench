@@ -19,6 +19,7 @@ from bciworkbench.reports import (
     write_html_report,
     write_json,
     write_jsonl,
+    write_latency_trace,
     write_predictions,
     write_windows,
 )
@@ -77,7 +78,15 @@ class Experiment:
         write_json(run_dir / "ontology_schema.json", ontology_json_schema())
         write_json(run_dir / "graph.json", runtime.describe_graph())
         write_json(run_dir / "channel_schema.json", signal.channel_schema.to_dict())
-        write_json(run_dir / "source_metadata.json", signal.metadata)
+        source_metadata = dict(signal.metadata)
+        latency_trace = source_metadata.pop("latency_trace", None)
+        if latency_trace:
+            source_metadata["latency_trace_artifact"] = "latency_trace.csv"
+            write_json(run_dir / "latency_trace.json", {"rows": latency_trace})
+            write_latency_trace(run_dir / "latency_trace.csv", latency_trace)
+        if signal.metadata.get("stream_health"):
+            write_json(run_dir / "stream_health.json", signal.metadata["stream_health"])
+        write_json(run_dir / "source_metadata.json", source_metadata)
         write_json(run_dir / "metrics.json", metrics)
         write_json(run_dir / "model" / "model_card.json", decoder.model_card)
         write_json(run_dir / "provenance.json", provenance(spec))

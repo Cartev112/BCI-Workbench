@@ -34,7 +34,10 @@ def experiment_json_schema() -> dict[str, Any]:
                 "additionalProperties": False,
                 "required": ["type"],
                 "properties": {
-                    "type": {"type": "string", "enum": ["synthetic_motor_imagery", "synthetic_p300", "mne_raw", "moabb"]},
+                    "type": {
+                        "type": "string",
+                        "enum": ["synthetic_motor_imagery", "synthetic_p300", "mne_raw", "moabb", "xdf_replay"],
+                    },
                     "duration_s": {"type": "number", "exclusiveMinimum": 0},
                     "sampling_rate": {"type": "number", "exclusiveMinimum": 0},
                     "n_channels": {"type": "integer", "minimum": 1},
@@ -65,6 +68,14 @@ def experiment_json_schema() -> dict[str, Any]:
                     "event_id_prefix": {"type": "string"},
                     "dataset": {"type": "string", "enum": ["BNCI2014_001"]},
                     "paradigm": {"type": "string"},
+                    "signal_stream": {"type": "string"},
+                    "marker_stream": {"type": "string"},
+                    "speed_mode": {"type": "string", "enum": ["fastest", "real_time", "scaled", "stepped"]},
+                    "speed": {"type": "number", "exclusiveMinimum": 0},
+                    "chunk_duration_s": {"type": "number", "exclusiveMinimum": 0},
+                    "step_duration_s": {"type": "number", "minimum": 0},
+                    "processing_time_ms": {"type": "number", "minimum": 0},
+                    "queue_capacity": {"type": "integer", "minimum": 1},
                 },
             },
             "pipeline": {
