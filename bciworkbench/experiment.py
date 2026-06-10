@@ -8,7 +8,7 @@ from pathlib import Path
 from bciworkbench.decoders.base import DecoderResult
 from bciworkbench.eval.metrics import decoder_metrics
 from bciworkbench.graph.context import RunContext
-from bciworkbench.graph.nodes import DecoderNode, FeatureNode, SourceNode, TaskNode, TrialWindowNode
+from bciworkbench.graph.nodes import AdaptationNode, DecoderNode, FeatureNode, SourceNode, TaskNode, TrialWindowNode
 from bciworkbench.graph.runtime import LinearRuntime
 from bciworkbench.ontology.schemas import ExperimentSpec, load_experiment_spec
 from bciworkbench.ontology.schema_export import ontology_json_schema
@@ -19,6 +19,7 @@ from bciworkbench.reports import (
     write_html_report,
     write_json,
     write_jsonl,
+    write_adaptation_packets,
     write_latency_trace,
     write_predictions,
     write_task_feedback,
@@ -76,6 +77,9 @@ class Experiment:
             }
         )
         task_metrics = context.artifacts.get("task_metrics")
+        adaptation_metrics = context.artifacts.get("adaptation_metrics")
+        if adaptation_metrics:
+            metrics.update(adaptation_metrics)
         if task_metrics:
             metrics.update(task_metrics)
             if metrics.get("balanced_accuracy") is not None and metrics.get("target_acquisition_rate") is not None:
@@ -97,6 +101,8 @@ class Experiment:
         write_json(run_dir / "metrics.json", metrics)
         if task_metrics:
             write_json(run_dir / "task_metrics.json", task_metrics)
+        if adaptation_metrics:
+            write_json(run_dir / "adaptation_metrics.json", adaptation_metrics)
         write_json(run_dir / "model" / "model_card.json", decoder.model_card)
         write_json(run_dir / "provenance.json", provenance(spec))
         write_jsonl(run_dir / "telemetry.jsonl", [record.to_dict() for record in runtime.telemetry])
@@ -104,6 +110,10 @@ class Experiment:
         write_windows(run_dir / "windows.csv", windows)
         write_features(run_dir / "features.csv", features)
         write_predictions(run_dir / "predictions.csv", decoder.predictions)
+        if context.artifacts.get("predictions_before_adaptation"):
+            write_predictions(run_dir / "predictions_before_adaptation.csv", context.artifacts["predictions_before_adaptation"])
+        if adaptation_metrics:
+            write_adaptation_packets(run_dir / "adaptation.jsonl", context.artifacts.get("adaptation_packets", []))
         if context.artifacts.get("task_states"):
             write_task_states(run_dir / "task_states.csv", context.artifacts["task_states"])
         if context.artifacts.get("feedback"):
@@ -120,6 +130,8 @@ class Experiment:
             FeatureNode(spec.pipeline[1].type, spec.pipeline[1].params),
             DecoderNode(spec.pipeline[2].params),
         ]
+        if spec.adaptation.type != "none":
+            nodes.append(AdaptationNode({"type": spec.adaptation.type, **spec.adaptation.params}))
         if spec.task.type == "cursor_1d":
             nodes.append(TaskNode(spec.task.type, spec.task.params))
         return LinearRuntime(nodes)

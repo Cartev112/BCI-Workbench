@@ -96,3 +96,4 @@ def test_experiment_json_schema_exports_required_config_shape() -> None:
     assert "synthetic_p300" in schema["properties"]["source"]["properties"]["type"]["enum"]
     assert "xdf_replay" in schema["properties"]["source"]["properties"]["type"]["enum"]
     assert "cursor_1d" in schema["properties"]["task"]["properties"]["type"]["enum"]
+    assert "confidence_gated" in schema["properties"]["adaptation"]["properties"]["type"]["enum"]

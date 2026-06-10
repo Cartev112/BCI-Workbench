@@ -11,6 +11,7 @@ synthetic motor imagery -> trial windows -> bandpower features -> decoder -> met
 synthetic P300 oddball -> event windows -> ERP features -> decoder -> metrics/report
 XDF replay source -> replay scheduler -> existing window/feature/decoder pipeline -> latency/backlog artifacts
 synthetic motor imagery -> decoder predictions -> 1D cursor task -> feedback/task metrics/report
+synthetic motor imagery -> decoder predictions -> adaptation node -> adaptation metrics/update log
 ```
 
 ## Quickstart
@@ -22,12 +23,13 @@ bciworkbench validate examples/p300_synthetic.yml
 bciworkbench schema experiment
 bciworkbench run examples/mi_synthetic.yml
 bciworkbench run examples/p300_synthetic.yml
+bciworkbench run examples/mi_synthetic_adaptive.yml
 bciworkbench compare runs/<run_a> runs/<run_b>
 bciworkbench stressbench examples/stressbench_mi.yml
 pytest
 ```
 
-The run command writes artifacts under `runs/<run_id>/`, including `ontology_schema.json`, `graph.json`, `telemetry.jsonl`, `source_metadata.json`, `metrics.json`, event/window/prediction CSV files, provenance, and a simple HTML report. Replay runs also write `latency_trace.csv`, `latency_trace.json`, and `stream_health.json`. Closed-loop cursor runs also write `task_metrics.json`, `task_states.csv`, and `feedback.csv`.
+The run command writes artifacts under `runs/<run_id>/`, including `ontology_schema.json`, `graph.json`, `telemetry.jsonl`, `source_metadata.json`, `metrics.json`, event/window/prediction CSV files, provenance, and a simple HTML report. Replay runs also write `latency_trace.csv`, `latency_trace.json`, and `stream_health.json`. Closed-loop cursor runs also write `task_metrics.json`, `task_states.csv`, and `feedback.csv`. Adaptive runs also write `adaptation_metrics.json`, `adaptation.jsonl`, and `predictions_before_adaptation.csv`.
 
 ## Current Scope
 
@@ -49,11 +51,13 @@ Implemented now:
 - XDF replay adapter with deterministic fastest, real-time, scaled, and stepped scheduler modes.
 - Replay packet arrival, backlog, queue-depth, latency trace, and stream health artifacts.
 - Closed-loop `cursor_1d` task runtime with feedback packets, task states, feedback delay modeling, and task success metrics.
+- Adaptation interfaces with no-op, supervised batch, confidence-gated, and drift-triggered recalibration adapters.
+- AdaptationPacket logging plus stability metrics and report warnings for harmful updates.
 - Basic decoder metrics and run reports.
 - CLI commands: `validate`, `schema`, `run`, `report`, `compare`, and `stressbench`.
 
 Planned next:
 
 - LSL and BrainFlow live sources.
-- Adaptation interfaces and broader closed-loop task environments.
+- Broader closed-loop task environments and richer online decoder update backends.
 - Broader StressBench robustness sweeps and public benchmark presets.

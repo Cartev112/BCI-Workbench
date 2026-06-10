@@ -32,6 +32,12 @@ class TaskSpec:
 
 
 @dataclass(frozen=True)
+class AdaptationSpec:
+    type: str = "none"
+    params: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class ExperimentSpec:
     schema_version: str
     name: str
@@ -40,6 +46,7 @@ class ExperimentSpec:
     source: SourceSpec
     pipeline: tuple[PipelineStepSpec, ...]
     task: TaskSpec
+    adaptation: AdaptationSpec = field(default_factory=AdaptationSpec)
     metrics: tuple[str, ...] = ()
     random_seed: int = 0
     output_dir: str = "runs"
@@ -56,6 +63,7 @@ class ExperimentSpec:
             "source": {"type": self.source.type, **self.source.params},
             "pipeline": [{"type": step.type, **step.params} for step in self.pipeline],
             "task": {"type": self.task.type, **self.task.params},
+            "adaptation": {"type": self.adaptation.type, **self.adaptation.params},
             "metrics": list(self.metrics),
             "metadata": self.metadata,
         }
@@ -150,6 +158,12 @@ def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
     task_params = {key: value for key, value in task_raw.items() if key != "type"}
     _validate_task_params(task_type, task_params)
 
+    adaptation_raw = config.get("adaptation", {"type": "none"})
+    adaptation_raw = _mapping(adaptation_raw, "adaptation")
+    adaptation_type = _string(adaptation_raw.get("type", "none"), "adaptation.type")
+    adaptation_params = {key: value for key, value in adaptation_raw.items() if key != "type"}
+    _validate_adaptation_params(adaptation_type, adaptation_params)
+
     metrics_raw = config.get("metrics", [])
     if not isinstance(metrics_raw, list):
         raise ConfigError("metrics must be a list")
@@ -169,6 +183,7 @@ def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
         source=SourceSpec(type=source_type, params=source_params),
         pipeline=tuple(pipeline),
         task=TaskSpec(type=task_type, params=task_params),
+        adaptation=AdaptationSpec(type=adaptation_type, params=adaptation_params),
         metrics=metrics,
         random_seed=random_seed,
         output_dir=output_dir,
@@ -298,3 +313,24 @@ def _validate_task_params(task_type: str, task_params: dict[str, Any]) -> None:
         threshold = _number(task_params["confidence_threshold"], "task.confidence_threshold")
         if not 0 <= threshold <= 1:
             raise ConfigError("task.confidence_threshold must be between 0 and 1")
+
+
+def _validate_adaptation_params(adaptation_type: str, params: dict[str, Any]) -> None:
+    if adaptation_type not in {"none", "noop", "supervised_batch", "confidence_gated", "drift_triggered"}:
+        raise ConfigError("adaptation.type must be one of: none, noop, supervised_batch, confidence_gated, drift_triggered")
+    allowed_by_type = {
+        "none": set(),
+        "noop": set(),
+        "supervised_batch": {"batch_size", "min_samples"},
+        "confidence_gated": {"confidence_gate", "batch_size", "min_samples"},
+        "drift_triggered": {"accuracy_floor", "confidence_floor", "batch_size", "min_samples"},
+    }
+    _validate_keys(params, allowed_by_type[adaptation_type], "adaptation")
+    for key in ("batch_size", "min_samples"):
+        if key in params and int(params[key]) <= 0:
+            raise ConfigError(f"adaptation.{key} must be positive")
+    for key in ("confidence_gate", "accuracy_floor", "confidence_floor"):
+        if key in params:
+            value = _number(params[key], f"adaptation.{key}")
+            if not 0 <= value <= 1:
+                raise ConfigError(f"adaptation.{key} must be between 0 and 1")

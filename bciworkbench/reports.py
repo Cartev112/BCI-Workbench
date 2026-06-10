@@ -10,7 +10,15 @@ from pathlib import Path
 from typing import Any
 
 from bciworkbench.decoders.base import DecoderResult
-from bciworkbench.ontology.packets import Event, FeaturePacket, FeedbackPacket, IntentPacket, TaskStatePacket, WindowPacket
+from bciworkbench.ontology.packets import (
+    AdaptationPacket,
+    Event,
+    FeaturePacket,
+    FeedbackPacket,
+    IntentPacket,
+    TaskStatePacket,
+    WindowPacket,
+)
 from bciworkbench.ontology.schemas import ExperimentSpec
 
 
@@ -23,6 +31,10 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
         for row in rows:
             handle.write(json.dumps(row, sort_keys=True))
             handle.write("\n")
+
+
+def write_adaptation_packets(path: Path, packets: list[AdaptationPacket]) -> None:
+    write_jsonl(path, [packet.to_dict() for packet in packets])
 
 
 def write_events(path: Path, events: list[Event]) -> None:
@@ -194,6 +206,7 @@ def write_html_report(path: Path, spec: ExperimentSpec, metrics: dict[str, Any],
     source_metadata = _read_json_if_exists(run_dir / "source_metadata.json")
     stream_health = _read_json_if_exists(run_dir / "stream_health.json")
     task_metrics = _read_json_if_exists(run_dir / "task_metrics.json")
+    adaptation_metrics = _read_json_if_exists(run_dir / "adaptation_metrics.json")
     model_card = _read_json_if_exists(run_dir / "model" / "model_card.json") or decoder.model_card
     graph = _read_json_if_exists(run_dir / "graph.json")
     provenance_payload = _read_json_if_exists(run_dir / "provenance.json")
@@ -234,6 +247,8 @@ def write_html_report(path: Path, spec: ExperimentSpec, metrics: dict[str, Any],
   {_dict_table(stream_health)}
   <h2>Closed Loop Task</h2>
   {_dict_table(task_metrics)}
+  <h2>Adaptation</h2>
+  {_dict_table(adaptation_metrics)}
   <h2>Model Card</h2>
   {_dict_table(model_card)}
   <h2>Latency And Runtime</h2>
@@ -245,7 +260,7 @@ def write_html_report(path: Path, spec: ExperimentSpec, metrics: dict[str, Any],
   <h2>Provenance</h2>
   {_dict_table(provenance_payload)}
   <h2>Run Artifacts</h2>
-  <p>See <code>metrics.json</code>, <code>task_metrics.json</code>, <code>task_states.csv</code>, <code>feedback.csv</code>, <code>model/model_card.json</code>, <code>model/decoder.pkl</code>, <code>graph.json</code>, <code>telemetry.jsonl</code>, <code>source_metadata.json</code>, <code>stream_health.json</code>, <code>latency_trace.csv</code>, <code>events.csv</code>, <code>windows.csv</code>, <code>features.csv</code>, and <code>predictions.csv</code>.</p>
+  <p>See <code>metrics.json</code>, <code>adaptation_metrics.json</code>, <code>adaptation.jsonl</code>, <code>predictions_before_adaptation.csv</code>, <code>task_metrics.json</code>, <code>task_states.csv</code>, <code>feedback.csv</code>, <code>model/model_card.json</code>, <code>model/decoder.pkl</code>, <code>graph.json</code>, <code>telemetry.jsonl</code>, <code>source_metadata.json</code>, <code>stream_health.json</code>, <code>latency_trace.csv</code>, <code>events.csv</code>, <code>windows.csv</code>, <code>features.csv</code>, and <code>predictions.csv</code>.</p>
   <h2>Simulation Note</h2>
   <p>This milestone source is synthetic and intended for software plumbing and architecture testing. It is not a validated physiological model.</p>
 </body>
@@ -263,6 +278,7 @@ def summarize_run(run_dir: str | Path) -> dict[str, Any]:
     source_metadata = _read_json_if_exists(run_path / "source_metadata.json")
     stream_health = _read_json_if_exists(run_path / "stream_health.json")
     task_metrics = _read_json_if_exists(run_path / "task_metrics.json")
+    adaptation_metrics = _read_json_if_exists(run_path / "adaptation_metrics.json")
     provenance_payload = _read_json_if_exists(run_path / "provenance.json")
     model_card = _read_json_if_exists(run_path / "model" / "model_card.json")
     telemetry = _read_jsonl_if_exists(run_path / "telemetry.jsonl")
@@ -288,6 +304,10 @@ def summarize_run(run_dir: str | Path) -> dict[str, Any]:
         "target_acquisition_rate": task_metrics.get("target_acquisition_rate"),
         "mean_time_to_target_s": task_metrics.get("mean_time_to_target_s"),
         "decoder_task_gap": metrics.get("decoder_task_gap"),
+        "adaptation_update_count": adaptation_metrics.get("adaptation_update_count"),
+        "adaptation_changed_prediction_rate": adaptation_metrics.get("adaptation_changed_prediction_rate"),
+        "adaptation_balanced_accuracy_before": adaptation_metrics.get("adaptation_balanced_accuracy_before"),
+        "adaptation_balanced_accuracy_after": adaptation_metrics.get("adaptation_balanced_accuracy_after"),
         "n_events": metrics.get("n_events"),
         "n_windows": metrics.get("n_windows"),
         "n_predictions": metrics.get("n_predictions"),
@@ -351,6 +371,8 @@ def _run_warnings(source_metadata: dict[str, Any], metrics: dict[str, Any]) -> l
         warnings.append(f"Replay dropped packets: {stream_health['dropped_packets']}")
     if metrics.get("decoder_task_gap") is not None and float(metrics["decoder_task_gap"]) > 0.25:
         warnings.append("Decoder accuracy is materially higher than closed-loop target acquisition.")
+    if metrics.get("adaptation_catastrophic_update_warning"):
+        warnings.append("Adaptation warning: post-update balanced accuracy dropped materially.")
     return warnings
 
 

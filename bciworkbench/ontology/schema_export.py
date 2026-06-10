@@ -107,6 +107,23 @@ def experiment_json_schema() -> dict[str, Any]:
                 },
                 "additionalProperties": True,
             },
+            "adaptation": {
+                "type": "object",
+                "required": ["type"],
+                "additionalProperties": False,
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["none", "noop", "supervised_batch", "confidence_gated", "drift_triggered"],
+                        "default": "none",
+                    },
+                    "batch_size": {"type": "integer", "minimum": 1},
+                    "min_samples": {"type": "integer", "minimum": 1},
+                    "confidence_gate": {"type": "number", "minimum": 0, "maximum": 1},
+                    "accuracy_floor": {"type": "number", "minimum": 0, "maximum": 1},
+                    "confidence_floor": {"type": "number", "minimum": 0, "maximum": 1},
+                },
+            },
             "metrics": {"type": "array", "items": {"type": "string"}},
             "metadata": {"type": "object"},
         },

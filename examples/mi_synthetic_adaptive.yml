@@ -1,0 +1,53 @@
+schema_version: "0.1"
+name: mi_synthetic_adaptive
+paradigm: motor_imagery
+mode: synthetic
+random_seed: 7
+output_dir: runs
+
+source:
+  type: synthetic_motor_imagery
+  duration_s: 120
+  sampling_rate: 250
+  n_channels: 16
+  n_trials: 80
+  trial_duration_s: 2.5
+  inter_trial_s: 0.5
+  snr_db: -4
+  subject:
+    alpha_peak_hz: 10.0
+    beta_peak_hz: 20.0
+    motor_imagery_vividness: 0.9
+    attention: 0.85
+    fatigue_rate: 0.002
+  session:
+    amplitude_drift: 0.2
+    spectral_drift_hz: 0.2
+    spatial_covariance_drift: 0.2
+    electrode_shift_mm: 4.0
+    marker_jitter_ms: 10.0
+
+pipeline:
+  - type: window
+    length_s: 1.5
+    offset_s: 0.3
+  - type: bandpower
+  - type: decoder
+    estimator: nearest_centroid
+    calibration_fraction: 0.6
+
+task:
+  type: motor_imagery_classification
+  classes: [left, right]
+
+adaptation:
+  type: supervised_batch
+  batch_size: 8
+  min_samples: 2
+
+metrics:
+  - accuracy
+  - balanced_accuracy
+  - mean_confidence
+  - adaptation_update_count
+  - adaptation_changed_prediction_rate

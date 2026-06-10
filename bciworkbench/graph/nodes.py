@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from bciworkbench.adaptation.factory import build_adaptation_adapter
 from bciworkbench.decoders.base import DecoderResult
 from bciworkbench.decoders.sklearn import SklearnDecoder
 from bciworkbench.graph.context import RunContext
@@ -77,6 +78,31 @@ class DecoderNode(Node):
         context.artifacts["decoder_result"] = result
         context.artifacts["predictions"] = result.predictions
         return result
+
+
+class AdaptationNode(Node):
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(f"adaptation.{params.get('type', 'none')}", "adaptation", params)
+
+    def process(self, payload: DecoderResult, context: RunContext) -> DecoderResult:
+        if not isinstance(payload, DecoderResult):
+            raise TypeError("AdaptationNode expected a DecoderResult")
+        result = build_adaptation_adapter(self.params).adapt(payload.predictions)
+        adapted_decoder = type(payload)(
+            predictions=result.predictions,
+            train_size=payload.train_size,
+            test_size=payload.test_size,
+            decoder_name=payload.decoder_name,
+            calibration_time_s=payload.calibration_time_s,
+            model_card={**payload.model_card, "adaptation": self.params},
+            model_path=payload.model_path,
+        )
+        context.artifacts["adaptation_packets"] = result.packets
+        context.artifacts["adaptation_metrics"] = result.metrics
+        context.artifacts["predictions_before_adaptation"] = payload.predictions
+        context.artifacts["predictions"] = result.predictions
+        context.artifacts["decoder_result"] = adapted_decoder
+        return adapted_decoder
 
 
 class TaskNode(Node):
