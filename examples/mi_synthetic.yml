@@ -1,0 +1,43 @@
+schema_version: "0.1"
+name: mi_synthetic_baseline
+paradigm: motor_imagery
+mode: synthetic
+random_seed: 7
+output_dir: runs
+
+source:
+  type: synthetic_motor_imagery
+  duration_s: 150
+  sampling_rate: 250
+  n_channels: 16
+  n_trials: 80
+  trial_duration_s: 2.5
+  inter_trial_s: 0.5
+  snr_db: -4
+  drift: 0.05
+
+pipeline:
+  - type: window
+    length_s: 1.5
+    offset_s: 0.4
+  - type: bandpower
+    bands:
+      - name: mu
+        fmin: 8
+        fmax: 13
+      - name: beta
+        fmin: 13
+        fmax: 30
+  - type: decoder
+    estimator: lda
+    calibration_fraction: 0.6
+
+task:
+  type: motor_imagery_classification
+  classes: [left, right]
+
+metrics:
+  - accuracy
+  - balanced_accuracy
+  - mean_confidence
+

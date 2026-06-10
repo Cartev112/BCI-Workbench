@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bciworkbench"
+version = "0.1.0"
+description = "A simulation-to-real workbench for BCI architecture experiments."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+sklearn = [
+  "scikit-learn>=1.4",
+]
+
+[project.scripts]
+bciworkbench = "bciworkbench.cli.main:main"
+
+[tool.setuptools.packages.find]
+include = ["bciworkbench*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
