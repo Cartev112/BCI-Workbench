@@ -90,6 +90,8 @@ class StressBenchSpec:
 class StressBenchResult:
     summary_dir: Path
     rows: list[dict[str, Any]]
+    aggregates: list[dict[str, Any]]
+    robustness: dict[str, Any]
 
 
 def load_stressbench_spec(path: str | Path) -> StressBenchSpec:
@@ -161,8 +163,10 @@ def run_stressbench(path: str | Path) -> StressBenchResult:
             }
             rows.append(row)
 
-    _write_summary(summary_dir, spec, rows)
-    return StressBenchResult(summary_dir=summary_dir, rows=rows)
+    aggregates = aggregate_rows(rows)
+    robustness = robustness_summary(aggregates)
+    _write_summary(summary_dir, spec, rows, aggregates, robustness)
+    return StressBenchResult(summary_dir=summary_dir, rows=rows, aggregates=aggregates, robustness=robustness)
 
 
 def _build_variant_raw(
@@ -188,13 +192,81 @@ def _build_variant_raw(
     return run_raw
 
 
-def _write_summary(summary_dir: Path, spec: StressBenchSpec, rows: list[dict[str, Any]]) -> None:
+def aggregate_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Aggregate repeated StressBench rows by preset."""
+
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        grouped.setdefault(str(row["preset"]), []).append(row)
+
+    clean_mean = _mean_metric(grouped.get("clean", []), "balanced_accuracy")
+    aggregates: list[dict[str, Any]] = []
+    for preset, preset_rows in grouped.items():
+        accuracy_mean = _mean_metric(preset_rows, "accuracy")
+        balanced_mean = _mean_metric(preset_rows, "balanced_accuracy")
+        confidence_mean = _mean_metric(preset_rows, "mean_confidence")
+        latency_mean = _mean_metric(preset_rows, "mean_decoder_latency_ms")
+        delta_from_clean = None
+        normalized_score = balanced_mean
+        if clean_mean is not None and balanced_mean is not None:
+            delta_from_clean = balanced_mean - clean_mean
+            normalized_score = balanced_mean / clean_mean if clean_mean > 0 else balanced_mean
+        aggregates.append(
+            {
+                "preset": preset,
+                "description": preset_rows[0].get("description"),
+                "runs": len(preset_rows),
+                "accuracy_mean": accuracy_mean,
+                "balanced_accuracy_mean": balanced_mean,
+                "mean_confidence_mean": confidence_mean,
+                "mean_decoder_latency_ms_mean": latency_mean,
+                "delta_from_clean": delta_from_clean,
+                "normalized_score": normalized_score,
+            }
+        )
+
+    order = {name: index for index, name in enumerate(BUILTIN_PRESETS)}
+    return sorted(aggregates, key=lambda row: order.get(str(row["preset"]), len(order)))
+
+
+def robustness_summary(aggregates: list[dict[str, Any]]) -> dict[str, Any]:
+    scored = [row for row in aggregates if row.get("balanced_accuracy_mean") is not None]
+    stressed = [row for row in scored if row["preset"] != "clean"] or scored
+    if not stressed:
+        return {
+            "robustness_score": None,
+            "weakest_preset": None,
+            "worst_balanced_accuracy": None,
+            "largest_drop_from_clean": None,
+        }
+    robustness_score = sum(float(row["balanced_accuracy_mean"]) for row in stressed) / len(stressed)
+    weakest = min(stressed, key=lambda row: float(row["balanced_accuracy_mean"]))
+    drops = [row for row in stressed if row.get("delta_from_clean") is not None]
+    largest_drop = min(drops, key=lambda row: float(row["delta_from_clean"])) if drops else None
+    return {
+        "robustness_score": robustness_score,
+        "weakest_preset": weakest["preset"],
+        "worst_balanced_accuracy": weakest["balanced_accuracy_mean"],
+        "largest_drop_from_clean": largest_drop["delta_from_clean"] if largest_drop else None,
+        "largest_drop_preset": largest_drop["preset"] if largest_drop else None,
+    }
+
+
+def _write_summary(
+    summary_dir: Path,
+    spec: StressBenchSpec,
+    rows: list[dict[str, Any]],
+    aggregates: list[dict[str, Any]],
+    robustness: dict[str, Any],
+) -> None:
     payload = {
         "name": spec.name,
         "base_config": str(spec.base_config),
         "presets": list(spec.presets),
         "repeats": spec.repeats,
         "rows": rows,
+        "aggregates": aggregates,
+        "robustness": robustness,
     }
     (summary_dir / "stressbench_summary.json").write_text(
         json.dumps(payload, indent=2, sort_keys=True),
@@ -206,10 +278,32 @@ def _write_summary(summary_dir: Path, spec: StressBenchSpec, rows: list[dict[str
         writer.writeheader()
         for row in rows:
             writer.writerow(row)
-    _write_html(summary_dir / "stressbench_report.html", spec, rows)
+    with (summary_dir / "stressbench_aggregates.csv").open("w", newline="", encoding="utf-8") as handle:
+        fieldnames = list(aggregates[0]) if aggregates else ["preset", "runs"]
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in aggregates:
+            writer.writerow(row)
+    _write_html(summary_dir / "stressbench_report.html", spec, rows, aggregates, robustness)
 
 
-def _write_html(path: Path, spec: StressBenchSpec, rows: list[dict[str, Any]]) -> None:
+def _write_html(
+    path: Path,
+    spec: StressBenchSpec,
+    rows: list[dict[str, Any]],
+    aggregates: list[dict[str, Any]],
+    robustness: dict[str, Any],
+) -> None:
+    aggregate_rows = "\n".join(
+        "<tr>"
+        f"<td>{row['preset']}</td>"
+        f"<td>{row['runs']}</td>"
+        f"<td>{_format_metric(row['balanced_accuracy_mean'])}</td>"
+        f"<td>{_format_metric(row['delta_from_clean'])}</td>"
+        f"<td>{_format_metric(row['normalized_score'])}</td>"
+        "</tr>"
+        for row in aggregates
+    )
     body_rows = "\n".join(
         "<tr>"
         f"<td>{row['preset']}</td>"
@@ -237,6 +331,21 @@ def _write_html(path: Path, spec: StressBenchSpec, rows: list[dict[str, Any]]) -
 <body>
   <h1>StressBench: {spec.name}</h1>
   <p><strong>Base config:</strong> <code>{spec.base_config}</code></p>
+  <h2>Robustness Summary</h2>
+  <table>
+    <tr><th>Metric</th><th>Value</th></tr>
+    <tr><td>Robustness score</td><td>{_format_metric(robustness.get("robustness_score"))}</td></tr>
+    <tr><td>Weakest preset</td><td>{robustness.get("weakest_preset")}</td></tr>
+    <tr><td>Worst balanced accuracy</td><td>{_format_metric(robustness.get("worst_balanced_accuracy"))}</td></tr>
+    <tr><td>Largest drop from clean</td><td>{_format_metric(robustness.get("largest_drop_from_clean"))}</td></tr>
+    <tr><td>Largest drop preset</td><td>{robustness.get("largest_drop_preset")}</td></tr>
+  </table>
+  <h2>Preset Aggregates</h2>
+  <table>
+    <tr><th>Preset</th><th>Runs</th><th>Balanced Accuracy Mean</th><th>Delta From Clean</th><th>Normalized Score</th></tr>
+    {aggregate_rows}
+  </table>
+  <h2>Runs</h2>
   <table>
     <tr><th>Preset</th><th>Repeat</th><th>Accuracy</th><th>Balanced Accuracy</th><th>Mean Confidence</th><th>Run ID</th></tr>
     {body_rows}
@@ -266,3 +375,15 @@ def _string(value: Any, path: str) -> str:
         raise ConfigError(f"{path} must be a non-empty string")
     return value
 
+
+def _mean_metric(rows: list[dict[str, Any]], metric: str) -> float | None:
+    values = [float(row[metric]) for row in rows if row.get(metric) is not None]
+    return sum(values) / len(values) if values else None
+
+
+def _format_metric(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, float):
+        return f"{value:.4f}"
+    return str(value)

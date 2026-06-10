@@ -56,6 +56,8 @@ def main(argv: list[str] | None = None) -> int:
             result = run_stressbench(args.config)
             print(f"summary_dir: {result.summary_dir}")
             print(f"runs: {len(result.rows)}")
+            print(f"robustness_score: {result.robustness.get('robustness_score')}")
+            print(f"weakest_preset: {result.robustness.get('weakest_preset')}")
             print(f"report: {result.summary_dir / 'stressbench_report.html'}")
             return 0
 
