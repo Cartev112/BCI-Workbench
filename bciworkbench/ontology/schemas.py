@@ -6,6 +6,8 @@ from typing import Any
 
 import yaml
 
+from bciworkbench.sim.profiles import SessionProfile, SubjectProfile
+
 
 class ConfigError(ValueError):
     """Raised when an experiment config is invalid."""
@@ -84,6 +86,12 @@ def _positive_number(value: Any, path: str) -> float:
     return number
 
 
+def _validate_keys(values: dict[str, Any], allowed: set[str], path: str) -> None:
+    unknown = sorted(set(values) - allowed)
+    if unknown:
+        raise ConfigError(f"{path} has unsupported key(s): {', '.join(unknown)}")
+
+
 def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
     config = _mapping(raw, "config")
 
@@ -99,10 +107,30 @@ def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
     source_params = {key: value for key, value in source_raw.items() if key != "type"}
     if source_type != "synthetic_motor_imagery":
         raise ConfigError("only source.type=synthetic_motor_imagery is implemented in this milestone")
+    allowed_source_keys = {
+        "duration_s",
+        "sampling_rate",
+        "n_channels",
+        "n_trials",
+        "trial_duration_s",
+        "inter_trial_s",
+        "snr_db",
+        "drift",
+        "line_noise_hz",
+        "subject",
+        "session",
+    }
+    _validate_keys(source_params, allowed_source_keys, "source")
     if "sampling_rate" in source_params:
         _positive_number(source_params["sampling_rate"], "source.sampling_rate")
     if "duration_s" in source_params:
         _positive_number(source_params["duration_s"], "source.duration_s")
+    if "subject" in source_params:
+        subject = _mapping(source_params["subject"], "source.subject")
+        _validate_keys(subject, set(SubjectProfile().__dict__), "source.subject")
+    if "session" in source_params:
+        session = _mapping(source_params["session"], "source.session")
+        _validate_keys(session, set(SessionProfile().__dict__), "source.session")
 
     pipeline_raw = config.get("pipeline")
     if not isinstance(pipeline_raw, list) or not pipeline_raw:
@@ -157,4 +185,3 @@ def load_experiment_spec(path: str | Path) -> ExperimentSpec:
     with Path(path).open("r", encoding="utf-8") as handle:
         raw = yaml.safe_load(handle)
     return parse_experiment_spec(raw)
-

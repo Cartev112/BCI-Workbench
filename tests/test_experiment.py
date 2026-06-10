@@ -24,9 +24,9 @@ def test_experiment_run_writes_artifacts(tmp_path: Path) -> None:
     result = Experiment(spec).run()
     assert result.run_dir.exists()
     assert (result.run_dir / "metrics.json").exists()
+    assert (result.run_dir / "source_metadata.json").exists()
     assert (result.run_dir / "events.csv").exists()
     assert (result.run_dir / "windows.csv").exists()
     assert (result.run_dir / "predictions.csv").exists()
     assert (result.run_dir / "report.html").exists()
     assert result.metrics["n_predictions"] > 0
-

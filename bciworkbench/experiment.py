@@ -74,6 +74,7 @@ class Experiment:
         write_json(run_dir / "resolved_config.json", spec.to_dict())
         write_json(run_dir / "graph.json", runtime.describe_graph())
         write_json(run_dir / "channel_schema.json", signal.channel_schema.to_dict())
+        write_json(run_dir / "source_metadata.json", signal.metadata)
         write_json(run_dir / "metrics.json", metrics)
         write_json(run_dir / "provenance.json", provenance(spec))
         write_jsonl(run_dir / "telemetry.jsonl", [record.to_dict() for record in runtime.telemetry])

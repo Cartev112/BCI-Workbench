@@ -19,7 +19,7 @@ bciworkbench run examples/mi_synthetic.yml
 pytest
 ```
 
-The run command writes artifacts under `runs/<run_id>/`, including `graph.json`, `telemetry.jsonl`, `metrics.json`, event/window/prediction CSV files, provenance, and a simple HTML report.
+The run command writes artifacts under `runs/<run_id>/`, including `graph.json`, `telemetry.jsonl`, `source_metadata.json`, `metrics.json`, event/window/prediction CSV files, provenance, and a simple HTML report.
 
 ## Current Scope
 
@@ -28,6 +28,7 @@ Implemented now:
 - YAML experiment validation.
 - Core ontology dataclasses for channels, events, packets, predictions, and task state.
 - Deterministic linear graph runtime with node telemetry.
+- Explicit synthetic subject/session profiles with artifact and drift stressors.
 - Deterministic synthetic motor imagery source with ground-truth trial events.
 - Windowing and bandpower feature extraction.
 - LDA decoder when scikit-learn is available, with a deterministic nearest-centroid fallback.

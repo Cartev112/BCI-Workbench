@@ -26,3 +26,18 @@ def test_invalid_source_is_rejected() -> None:
             }
         )
 
+
+def test_invalid_nested_source_key_is_rejected() -> None:
+    with pytest.raises(ConfigError, match="source.subject"):
+        parse_experiment_spec(
+            {
+                "name": "bad-profile",
+                "paradigm": "motor_imagery",
+                "source": {
+                    "type": "synthetic_motor_imagery",
+                    "subject": {"alpha_peak_hz": 10.0, "unknown": 1.0},
+                },
+                "pipeline": [{"type": "window"}, {"type": "bandpower"}, {"type": "decoder"}],
+                "task": {"type": "motor_imagery_classification"},
+            }
+        )
