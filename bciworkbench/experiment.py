@@ -11,6 +11,7 @@ from bciworkbench.graph.context import RunContext
 from bciworkbench.graph.nodes import BandpowerNode, DecoderNode, SyntheticMotorImagerySourceNode, TrialWindowNode
 from bciworkbench.graph.runtime import LinearRuntime
 from bciworkbench.ontology.schemas import ExperimentSpec, load_experiment_spec
+from bciworkbench.ontology.schema_export import ontology_json_schema
 from bciworkbench.reports import (
     provenance,
     write_events,
@@ -72,6 +73,7 @@ class Experiment:
         )
 
         write_json(run_dir / "resolved_config.json", spec.to_dict())
+        write_json(run_dir / "ontology_schema.json", ontology_json_schema())
         write_json(run_dir / "graph.json", runtime.describe_graph())
         write_json(run_dir / "channel_schema.json", signal.channel_schema.to_dict())
         write_json(run_dir / "source_metadata.json", signal.metadata)

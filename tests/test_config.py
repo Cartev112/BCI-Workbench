@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from bciworkbench.ontology.schema_export import experiment_json_schema
 from bciworkbench.ontology.schemas import ConfigError, load_experiment_spec, parse_experiment_spec
 
 
@@ -41,3 +42,9 @@ def test_invalid_nested_source_key_is_rejected() -> None:
                 "task": {"type": "motor_imagery_classification"},
             }
         )
+
+
+def test_experiment_json_schema_exports_required_config_shape() -> None:
+    schema = experiment_json_schema()
+    assert schema["required"] == ["name", "paradigm", "source", "pipeline", "task"]
+    assert "subject" in schema["properties"]["source"]["properties"]

@@ -15,12 +15,13 @@ synthetic motor imagery -> trial windows -> bandpower features -> decoder -> met
 ```powershell
 pip install -e ".[dev]"
 bciworkbench validate examples/mi_synthetic.yml
+bciworkbench schema experiment
 bciworkbench run examples/mi_synthetic.yml
 bciworkbench stressbench examples/stressbench_mi.yml
 pytest
 ```
 
-The run command writes artifacts under `runs/<run_id>/`, including `graph.json`, `telemetry.jsonl`, `source_metadata.json`, `metrics.json`, event/window/prediction CSV files, provenance, and a simple HTML report.
+The run command writes artifacts under `runs/<run_id>/`, including `ontology_schema.json`, `graph.json`, `telemetry.jsonl`, `source_metadata.json`, `metrics.json`, event/window/prediction CSV files, provenance, and a simple HTML report.
 
 ## Current Scope
 
@@ -28,6 +29,7 @@ Implemented now:
 
 - YAML experiment validation.
 - Core ontology dataclasses for channels, events, packets, predictions, and task state.
+- JSON Schema export for experiment configs and ontology artifacts.
 - Deterministic linear graph runtime with node telemetry.
 - Explicit synthetic subject/session profiles with artifact and drift stressors.
 - StressBench preset matrix with aggregate robustness scoring for synthetic checks.
@@ -35,7 +37,7 @@ Implemented now:
 - Windowing and bandpower feature extraction.
 - LDA decoder when scikit-learn is available, with a deterministic nearest-centroid fallback.
 - Basic decoder metrics and run reports.
-- CLI commands: `validate`, `run`, and `report`.
+- CLI commands: `validate`, `schema`, `run`, `report`, and `stressbench`.
 
 Planned next:
 

@@ -24,6 +24,7 @@ def test_experiment_run_writes_artifacts(tmp_path: Path) -> None:
     result = Experiment(spec).run()
     assert result.run_dir.exists()
     assert (result.run_dir / "metrics.json").exists()
+    assert (result.run_dir / "ontology_schema.json").exists()
     assert (result.run_dir / "source_metadata.json").exists()
     assert (result.run_dir / "events.csv").exists()
     assert (result.run_dir / "windows.csv").exists()

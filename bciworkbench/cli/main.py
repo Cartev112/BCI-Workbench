@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from bciworkbench.experiment import Experiment
+from bciworkbench.ontology.schema_export import experiment_json_schema, ontology_json_schema
 from bciworkbench.ontology.schemas import ConfigError, load_experiment_spec
 from bciworkbench.stressbench import run_stressbench
 
@@ -24,6 +25,10 @@ def main(argv: list[str] | None = None) -> int:
 
     stressbench_parser = subparsers.add_parser("stressbench", help="Run a StressBench preset matrix.")
     stressbench_parser.add_argument("config")
+
+    schema_parser = subparsers.add_parser("schema", help="Print a JSON Schema.")
+    schema_parser.add_argument("kind", choices=["experiment", "ontology"])
+    schema_parser.add_argument("--output", "-o")
 
     args = parser.parse_args(argv)
 
@@ -59,6 +64,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"robustness_score: {result.robustness.get('robustness_score')}")
             print(f"weakest_preset: {result.robustness.get('weakest_preset')}")
             print(f"report: {result.summary_dir / 'stressbench_report.html'}")
+            return 0
+
+        if args.command == "schema":
+            schema = experiment_json_schema() if args.kind == "experiment" else ontology_json_schema()
+            rendered = json.dumps(schema, indent=2, sort_keys=True)
+            if args.output:
+                Path(args.output).write_text(rendered + "\n", encoding="utf-8")
+                print(f"schema: {args.output}")
+            else:
+                print(rendered)
             return 0
 
     except (ConfigError, FileNotFoundError, ValueError, TypeError) as exc:
