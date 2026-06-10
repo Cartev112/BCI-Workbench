@@ -16,13 +16,24 @@ synthetic motor imagery -> decoder predictions -> adaptation node -> adaptation 
 
 ## Quickstart
 
+From a fresh checkout:
+
 ```powershell
 pip install -e ".[dev]"
 bciworkbench validate examples/mi_synthetic.yml
+bciworkbench run examples/mi_synthetic.yml
+pytest
+```
+
+The `run` command prints the generated `runs/<run_id>/report.html` path.
+
+Useful next commands:
+
+```powershell
 bciworkbench validate examples/p300_synthetic.yml
 bciworkbench schema experiment
-bciworkbench run examples/mi_synthetic.yml
 bciworkbench run examples/p300_synthetic.yml
+bciworkbench run examples/mi_cursor_synthetic.yml
 bciworkbench run examples/mi_synthetic_adaptive.yml
 bciworkbench compare runs/<run_a> runs/<run_b>
 bciworkbench stressbench examples/stressbench_mi.yml
@@ -64,3 +75,11 @@ Planned next:
 - LSL and BrainFlow live sources.
 - Broader closed-loop task environments and richer online decoder update backends.
 - Broader public benchmark presets and documentation guides.
+
+## Guides
+
+- [Ontology Guide](docs/ontology.md)
+- [Source Adapter Guide](docs/source_adapters.md)
+- [Simulation Realism Guide](docs/simulation_realism.md)
+- [Report Interpretation Guide](docs/reports.md)
+- [Non-Goals And Limitations](docs/limitations.md)
