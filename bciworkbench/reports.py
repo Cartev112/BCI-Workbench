@@ -16,6 +16,13 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
+def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
+    with path.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, sort_keys=True))
+            handle.write("\n")
+
+
 def write_events(path: Path, events: list[Event]) -> None:
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
@@ -132,11 +139,10 @@ def write_html_report(path: Path, spec: ExperimentSpec, metrics: dict[str, Any],
     <tr><td>Mean decoder latency ms</td><td>{metrics.get("mean_decoder_latency_ms")}</td></tr>
   </table>
   <h2>Run Artifacts</h2>
-  <p>See <code>metrics.json</code>, <code>events.csv</code>, <code>windows.csv</code>, <code>features.csv</code>, and <code>predictions.csv</code>.</p>
+  <p>See <code>metrics.json</code>, <code>graph.json</code>, <code>telemetry.jsonl</code>, <code>events.csv</code>, <code>windows.csv</code>, <code>features.csv</code>, and <code>predictions.csv</code>.</p>
   <h2>Simulation Note</h2>
   <p>This milestone source is synthetic and intended for software plumbing and architecture testing. It is not a validated physiological model.</p>
 </body>
 </html>
 """
     path.write_text(html, encoding="utf-8")
-
