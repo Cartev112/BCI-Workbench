@@ -6,19 +6,20 @@ from bciworkbench.decoders.sklearn import SklearnDecoder
 from bciworkbench.graph.context import RunContext
 from bciworkbench.graph.node import Node
 from bciworkbench.ontology.packets import FeaturePacket, SignalPacket, WindowPacket
-from bciworkbench.sources.synthetic import SyntheticMotorImagerySource
+from bciworkbench.sources.factory import build_source
 from bciworkbench.transforms.features import BandpowerTransform
 from bciworkbench.transforms.windowing import TrialWindowTransform
 
 
-class SyntheticMotorImagerySourceNode(Node):
-    def __init__(self, params: dict[str, Any]) -> None:
-        super().__init__("source.synthetic_motor_imagery", "source", params)
+class SourceNode(Node):
+    def __init__(self, source_type: str, params: dict[str, Any]) -> None:
+        super().__init__(f"source.{source_type}", "source", params)
+        self.source_type = source_type
 
     def process(self, payload: Any, context: RunContext) -> SignalPacket:
         if payload is not None:
             raise ValueError("source node expected no input payload")
-        packet = SyntheticMotorImagerySource.from_params(self.params, seed=context.spec.random_seed).read()
+        packet = build_source(context.spec.source, seed=context.spec.random_seed).read()
         context.artifacts["signal"] = packet
         return packet
 

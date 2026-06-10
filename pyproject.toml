@@ -23,6 +23,12 @@ sklearn = [
 pyriemann = [
   "pyriemann>=0.6",
 ]
+mne = [
+  "mne>=1.6",
+]
+moabb = [
+  "moabb>=1.0",
+]
 
 [project.scripts]
 bciworkbench = "bciworkbench.cli.main:main"

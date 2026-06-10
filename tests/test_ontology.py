@@ -143,7 +143,11 @@ def test_task_feedback_and_adaptation_packets_serialize() -> None:
 def test_json_schema_exports_include_core_ontology() -> None:
     experiment_schema = experiment_json_schema()
     ontology_schema = ontology_json_schema()
-    assert experiment_schema["properties"]["source"]["properties"]["type"]["enum"] == ["synthetic_motor_imagery"]
+    assert experiment_schema["properties"]["source"]["properties"]["type"]["enum"] == [
+        "synthetic_motor_imagery",
+        "mne_raw",
+        "moabb",
+    ]
     assert "ChannelSchema" in ontology_schema["$defs"]
     assert "FeedbackPacket" in ontology_schema["$defs"]
     assert "sample_clock" in ontology_schema["properties"]["clock_domains"]["items"]["enum"]

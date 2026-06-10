@@ -34,7 +34,7 @@ def experiment_json_schema() -> dict[str, Any]:
                 "additionalProperties": False,
                 "required": ["type"],
                 "properties": {
-                    "type": {"type": "string", "enum": ["synthetic_motor_imagery"]},
+                    "type": {"type": "string", "enum": ["synthetic_motor_imagery", "mne_raw", "moabb"]},
                     "duration_s": {"type": "number", "exclusiveMinimum": 0},
                     "sampling_rate": {"type": "number", "exclusiveMinimum": 0},
                     "n_channels": {"type": "integer", "minimum": 1},
@@ -45,15 +45,25 @@ def experiment_json_schema() -> dict[str, Any]:
                     "drift": {"type": "number"},
                     "line_noise_hz": {"type": "number", "exclusiveMinimum": 0},
                     "subject": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "properties": subject_properties,
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": subject_properties,
+                            },
+                            {"type": "integer", "minimum": 1},
+                        ]
                     },
                     "session": {
                         "type": "object",
                         "additionalProperties": False,
                         "properties": session_properties,
                     },
+                    "path": {"type": "string"},
+                    "preload": {"type": "boolean"},
+                    "event_id_prefix": {"type": "string"},
+                    "dataset": {"type": "string", "enum": ["BNCI2014_001"]},
+                    "paradigm": {"type": "string"},
                 },
             },
             "pipeline": {

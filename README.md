@@ -37,6 +37,7 @@ Implemented now:
 - Windowing and bandpower feature extraction.
 - Sklearn-style decoder adapter with LDA, logistic regression, model persistence, model cards, and a deterministic nearest-centroid fallback.
 - Optional pyRiemann MDM adapter with dependency guard.
+- MNE Raw FIF source adapter and initial MOABB BNCI2014_001 adapter with optional dependency guards.
 - Basic decoder metrics and run reports.
 - CLI commands: `validate`, `schema`, `run`, `report`, and `stressbench`.
 

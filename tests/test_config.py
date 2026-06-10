@@ -65,3 +65,5 @@ def test_experiment_json_schema_exports_required_config_shape() -> None:
     schema = experiment_json_schema()
     assert schema["required"] == ["name", "paradigm", "source", "pipeline", "task"]
     assert "subject" in schema["properties"]["source"]["properties"]
+    assert "mne_raw" in schema["properties"]["source"]["properties"]["type"]["enum"]
+    assert "moabb" in schema["properties"]["source"]["properties"]["type"]["enum"]

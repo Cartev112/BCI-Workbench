@@ -8,7 +8,7 @@ from pathlib import Path
 from bciworkbench.decoders.base import DecoderResult
 from bciworkbench.eval.metrics import decoder_metrics
 from bciworkbench.graph.context import RunContext
-from bciworkbench.graph.nodes import BandpowerNode, DecoderNode, SyntheticMotorImagerySourceNode, TrialWindowNode
+from bciworkbench.graph.nodes import BandpowerNode, DecoderNode, SourceNode, TrialWindowNode
 from bciworkbench.graph.runtime import LinearRuntime
 from bciworkbench.ontology.schemas import ExperimentSpec, load_experiment_spec
 from bciworkbench.ontology.schema_export import ontology_json_schema
@@ -94,7 +94,7 @@ class Experiment:
         spec = self.spec
         return LinearRuntime(
             [
-                SyntheticMotorImagerySourceNode(spec.source.params),
+                SourceNode(spec.source.type, spec.source.params),
                 TrialWindowNode(spec.pipeline[0].params),
                 BandpowerNode(spec.pipeline[1].params),
                 DecoderNode(spec.pipeline[2].params),

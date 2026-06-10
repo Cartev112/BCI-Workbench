@@ -1,0 +1,39 @@
+schema_version: "0.1"
+name: mi_moabb_bnci2014_001
+paradigm: motor_imagery
+mode: offline
+random_seed: 7
+output_dir: runs
+
+source:
+  type: moabb
+  dataset: BNCI2014_001
+  subject: 1
+  paradigm: motor_imagery
+
+pipeline:
+  - type: window
+    length_s: 1.5
+    offset_s: 0.4
+  - type: bandpower
+    bands:
+      - name: mu
+        fmin: 8
+        fmax: 13
+      - name: beta
+        fmin: 13
+        fmax: 30
+  - type: decoder
+    estimator: lda
+    calibration_fraction: 0.6
+
+task:
+  type: motor_imagery_classification
+  classes: [left_hand, right_hand]
+
+metrics:
+  - accuracy
+  - balanced_accuracy
+  - mean_confidence
+  - calibration_time_s
+

@@ -105,32 +105,11 @@ def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
     source_raw = _mapping(config.get("source"), "source")
     source_type = _string(source_raw.get("type"), "source.type")
     source_params = {key: value for key, value in source_raw.items() if key != "type"}
-    if source_type != "synthetic_motor_imagery":
-        raise ConfigError("only source.type=synthetic_motor_imagery is implemented in this milestone")
-    allowed_source_keys = {
-        "duration_s",
-        "sampling_rate",
-        "n_channels",
-        "n_trials",
-        "trial_duration_s",
-        "inter_trial_s",
-        "snr_db",
-        "drift",
-        "line_noise_hz",
-        "subject",
-        "session",
-    }
+    if source_type not in {"synthetic_motor_imagery", "mne_raw", "moabb"}:
+        raise ConfigError("source.type must be one of: synthetic_motor_imagery, mne_raw, moabb")
+    allowed_source_keys = _allowed_source_keys(source_type)
     _validate_keys(source_params, allowed_source_keys, "source")
-    if "sampling_rate" in source_params:
-        _positive_number(source_params["sampling_rate"], "source.sampling_rate")
-    if "duration_s" in source_params:
-        _positive_number(source_params["duration_s"], "source.duration_s")
-    if "subject" in source_params:
-        subject = _mapping(source_params["subject"], "source.subject")
-        _validate_keys(subject, set(SubjectProfile().__dict__), "source.subject")
-    if "session" in source_params:
-        session = _mapping(source_params["session"], "source.session")
-        _validate_keys(session, set(SessionProfile().__dict__), "source.session")
+    _validate_source_params(source_type, source_params)
 
     pipeline_raw = config.get("pipeline")
     if not isinstance(pipeline_raw, list) or not pipeline_raw:
@@ -195,3 +174,49 @@ def load_experiment_spec(path: str | Path) -> ExperimentSpec:
     with Path(path).open("r", encoding="utf-8") as handle:
         raw = yaml.safe_load(handle)
     return parse_experiment_spec(raw)
+
+
+def _allowed_source_keys(source_type: str) -> set[str]:
+    if source_type == "synthetic_motor_imagery":
+        return {
+            "duration_s",
+            "sampling_rate",
+            "n_channels",
+            "n_trials",
+            "trial_duration_s",
+            "inter_trial_s",
+            "snr_db",
+            "drift",
+            "line_noise_hz",
+            "subject",
+            "session",
+        }
+    if source_type == "mne_raw":
+        return {"path", "preload", "event_id_prefix"}
+    if source_type == "moabb":
+        return {"dataset", "subject", "paradigm"}
+    return set()
+
+
+def _validate_source_params(source_type: str, source_params: dict[str, Any]) -> None:
+    if source_type == "synthetic_motor_imagery":
+        if "sampling_rate" in source_params:
+            _positive_number(source_params["sampling_rate"], "source.sampling_rate")
+        if "duration_s" in source_params:
+            _positive_number(source_params["duration_s"], "source.duration_s")
+        if "subject" in source_params:
+            subject = _mapping(source_params["subject"], "source.subject")
+            _validate_keys(subject, set(SubjectProfile().__dict__), "source.subject")
+        if "session" in source_params:
+            session = _mapping(source_params["session"], "source.session")
+            _validate_keys(session, set(SessionProfile().__dict__), "source.session")
+    elif source_type == "mne_raw":
+        _string(source_params.get("path"), "source.path")
+    elif source_type == "moabb":
+        dataset = _string(source_params.get("dataset"), "source.dataset")
+        if dataset != "BNCI2014_001":
+            raise ConfigError("only source.dataset=BNCI2014_001 is supported for moabb in this milestone")
+        if "subject" in source_params:
+            subject = int(source_params["subject"])
+            if subject <= 0:
+                raise ConfigError("source.subject must be positive")
