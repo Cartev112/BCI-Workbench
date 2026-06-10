@@ -6,6 +6,7 @@ from pathlib import Path
 
 from bciworkbench.experiment import Experiment
 from bciworkbench.ontology.schemas import ConfigError, load_experiment_spec
+from bciworkbench.stressbench import run_stressbench
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -20,6 +21,9 @@ def main(argv: list[str] | None = None) -> int:
 
     report_parser = subparsers.add_parser("report", help="Print a run report path and metrics summary.")
     report_parser.add_argument("run_dir")
+
+    stressbench_parser = subparsers.add_parser("stressbench", help="Run a StressBench preset matrix.")
+    stressbench_parser.add_argument("config")
 
     args = parser.parse_args(argv)
 
@@ -48,7 +52,14 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(metrics, indent=2, sort_keys=True))
             return 0
 
-    except (ConfigError, FileNotFoundError, ValueError) as exc:
+        if args.command == "stressbench":
+            result = run_stressbench(args.config)
+            print(f"summary_dir: {result.summary_dir}")
+            print(f"runs: {len(result.rows)}")
+            print(f"report: {result.summary_dir / 'stressbench_report.html'}")
+            return 0
+
+    except (ConfigError, FileNotFoundError, ValueError, TypeError) as exc:
         print(f"error: {exc}")
         return 2
 
@@ -57,4 +68,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

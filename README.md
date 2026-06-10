@@ -16,6 +16,7 @@ synthetic motor imagery -> trial windows -> bandpower features -> decoder -> met
 pip install -e ".[dev]"
 bciworkbench validate examples/mi_synthetic.yml
 bciworkbench run examples/mi_synthetic.yml
+bciworkbench stressbench examples/stressbench_mi.yml
 pytest
 ```
 
@@ -29,6 +30,7 @@ Implemented now:
 - Core ontology dataclasses for channels, events, packets, predictions, and task state.
 - Deterministic linear graph runtime with node telemetry.
 - Explicit synthetic subject/session profiles with artifact and drift stressors.
+- StressBench preset matrix for synthetic robustness checks.
 - Deterministic synthetic motor imagery source with ground-truth trial events.
 - Windowing and bandpower feature extraction.
 - LDA decoder when scikit-learn is available, with a deterministic nearest-centroid fallback.

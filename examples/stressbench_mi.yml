@@ -1,0 +1,14 @@
+name: mi_stressbench
+base_config: mi_synthetic.yml
+output_dir: runs
+repeats: 1
+seed_stride: 11
+presets:
+  - clean
+  - low_snr
+  - high_blink
+  - muscle_noise
+  - channel_dropout
+  - session_drift
+  - jittery_markers
+  - fatigue
