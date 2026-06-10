@@ -145,9 +145,10 @@ def parse_experiment_spec(raw: dict[str, Any]) -> ExperimentSpec:
 
     task_raw = _mapping(config.get("task"), "task")
     task_type = _string(task_raw.get("type"), "task.type")
-    if task_type not in {"motor_imagery_classification", "p300_classification"}:
-        raise ConfigError("task.type must be one of: motor_imagery_classification, p300_classification")
+    if task_type not in {"motor_imagery_classification", "p300_classification", "cursor_1d"}:
+        raise ConfigError("task.type must be one of: motor_imagery_classification, p300_classification, cursor_1d")
     task_params = {key: value for key, value in task_raw.items() if key != "type"}
+    _validate_task_params(task_type, task_params)
 
     metrics_raw = config.get("metrics", [])
     if not isinstance(metrics_raw, list):
@@ -265,3 +266,35 @@ def _validate_source_params(source_type: str, source_params: dict[str, Any]) -> 
                 raise ConfigError("source.processing_time_ms must be non-negative")
         if "queue_capacity" in source_params and int(source_params["queue_capacity"]) <= 0:
             raise ConfigError("source.queue_capacity must be positive")
+
+
+def _validate_task_params(task_type: str, task_params: dict[str, Any]) -> None:
+    if task_type != "cursor_1d":
+        return
+    allowed = {
+        "target_position",
+        "target_radius",
+        "target_dwell_steps",
+        "target_dwell",
+        "step_size",
+        "control_interval_s",
+        "feedback_delay_ms",
+        "confidence_threshold",
+        "reset_on_target_change",
+    }
+    _validate_keys(task_params, allowed, "task")
+    for key in ("target_position", "step_size", "control_interval_s"):
+        if key in task_params:
+            _positive_number(task_params[key], f"task.{key}")
+    for key in ("target_radius", "feedback_delay_ms"):
+        if key in task_params:
+            number = _number(task_params[key], f"task.{key}")
+            if number < 0:
+                raise ConfigError(f"task.{key} must be non-negative")
+    for key in ("target_dwell_steps", "target_dwell"):
+        if key in task_params and int(task_params[key]) <= 0:
+            raise ConfigError(f"task.{key} must be positive")
+    if "confidence_threshold" in task_params:
+        threshold = _number(task_params["confidence_threshold"], "task.confidence_threshold")
+        if not 0 <= threshold <= 1:
+            raise ConfigError("task.confidence_threshold must be between 0 and 1")

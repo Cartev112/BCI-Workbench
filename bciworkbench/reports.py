@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from bciworkbench.decoders.base import DecoderResult
-from bciworkbench.ontology.packets import Event, FeaturePacket, IntentPacket, WindowPacket
+from bciworkbench.ontology.packets import Event, FeaturePacket, FeedbackPacket, IntentPacket, TaskStatePacket, WindowPacket
 from bciworkbench.ontology.schemas import ExperimentSpec
 
 
@@ -102,6 +102,60 @@ def write_predictions(path: Path, predictions: list[IntentPacket]) -> None:
             )
 
 
+def write_task_states(path: Path, states: list[TaskStatePacket]) -> None:
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "task_id",
+                "step_index",
+                "target",
+                "position",
+                "target_position",
+                "reward",
+                "done",
+                "success",
+                "metadata",
+            ],
+        )
+        writer.writeheader()
+        for state in states:
+            writer.writerow(
+                {
+                    "task_id": state.task_id,
+                    "step_index": state.state.get("step_index"),
+                    "target": state.target,
+                    "position": state.state.get("position"),
+                    "target_position": state.state.get("target_position"),
+                    "reward": state.reward,
+                    "done": state.done,
+                    "success": state.success,
+                    "metadata": json.dumps(state.metadata, sort_keys=True),
+                }
+            )
+
+
+def write_task_feedback(path: Path, feedback: list[FeedbackPacket]) -> None:
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=["action", "rendered_at", "clock_domain", "reward", "delay_ms", "task_id", "metadata"],
+        )
+        writer.writeheader()
+        for packet in feedback:
+            writer.writerow(
+                {
+                    "action": packet.action,
+                    "rendered_at": packet.rendered_at,
+                    "clock_domain": packet.clock_domain,
+                    "reward": packet.reward,
+                    "delay_ms": packet.delay_ms,
+                    "task_id": packet.task_state.task_id if packet.task_state else None,
+                    "metadata": json.dumps(packet.metadata, sort_keys=True),
+                }
+            )
+
+
 def write_latency_trace(path: Path, rows: list[dict[str, Any]]) -> None:
     fieldnames = [
         "packet_index",
@@ -139,6 +193,7 @@ def write_html_report(path: Path, spec: ExperimentSpec, metrics: dict[str, Any],
     run_dir = path.parent
     source_metadata = _read_json_if_exists(run_dir / "source_metadata.json")
     stream_health = _read_json_if_exists(run_dir / "stream_health.json")
+    task_metrics = _read_json_if_exists(run_dir / "task_metrics.json")
     model_card = _read_json_if_exists(run_dir / "model" / "model_card.json") or decoder.model_card
     graph = _read_json_if_exists(run_dir / "graph.json")
     provenance_payload = _read_json_if_exists(run_dir / "provenance.json")
@@ -177,6 +232,8 @@ def write_html_report(path: Path, spec: ExperimentSpec, metrics: dict[str, Any],
   {_dict_table(source_metadata)}
   <h2>Replay Stream Health</h2>
   {_dict_table(stream_health)}
+  <h2>Closed Loop Task</h2>
+  {_dict_table(task_metrics)}
   <h2>Model Card</h2>
   {_dict_table(model_card)}
   <h2>Latency And Runtime</h2>
@@ -188,7 +245,7 @@ def write_html_report(path: Path, spec: ExperimentSpec, metrics: dict[str, Any],
   <h2>Provenance</h2>
   {_dict_table(provenance_payload)}
   <h2>Run Artifacts</h2>
-  <p>See <code>metrics.json</code>, <code>model/model_card.json</code>, <code>model/decoder.pkl</code>, <code>graph.json</code>, <code>telemetry.jsonl</code>, <code>source_metadata.json</code>, <code>stream_health.json</code>, <code>latency_trace.csv</code>, <code>events.csv</code>, <code>windows.csv</code>, <code>features.csv</code>, and <code>predictions.csv</code>.</p>
+  <p>See <code>metrics.json</code>, <code>task_metrics.json</code>, <code>task_states.csv</code>, <code>feedback.csv</code>, <code>model/model_card.json</code>, <code>model/decoder.pkl</code>, <code>graph.json</code>, <code>telemetry.jsonl</code>, <code>source_metadata.json</code>, <code>stream_health.json</code>, <code>latency_trace.csv</code>, <code>events.csv</code>, <code>windows.csv</code>, <code>features.csv</code>, and <code>predictions.csv</code>.</p>
   <h2>Simulation Note</h2>
   <p>This milestone source is synthetic and intended for software plumbing and architecture testing. It is not a validated physiological model.</p>
 </body>
@@ -205,6 +262,7 @@ def summarize_run(run_dir: str | Path) -> dict[str, Any]:
     metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
     source_metadata = _read_json_if_exists(run_path / "source_metadata.json")
     stream_health = _read_json_if_exists(run_path / "stream_health.json")
+    task_metrics = _read_json_if_exists(run_path / "task_metrics.json")
     provenance_payload = _read_json_if_exists(run_path / "provenance.json")
     model_card = _read_json_if_exists(run_path / "model" / "model_card.json")
     telemetry = _read_jsonl_if_exists(run_path / "telemetry.jsonl")
@@ -227,6 +285,9 @@ def summarize_run(run_dir: str | Path) -> dict[str, Any]:
         "replay_packet_count": stream_health.get("packet_count"),
         "replay_max_backlog_ms": stream_health.get("max_backlog_ms"),
         "replay_max_queue_depth": stream_health.get("max_queue_depth"),
+        "target_acquisition_rate": task_metrics.get("target_acquisition_rate"),
+        "mean_time_to_target_s": task_metrics.get("mean_time_to_target_s"),
+        "decoder_task_gap": metrics.get("decoder_task_gap"),
         "n_events": metrics.get("n_events"),
         "n_windows": metrics.get("n_windows"),
         "n_predictions": metrics.get("n_predictions"),
@@ -288,6 +349,8 @@ def _run_warnings(source_metadata: dict[str, Any], metrics: dict[str, Any]) -> l
     stream_health = source_metadata.get("stream_health") or {}
     if stream_health.get("dropped_packets"):
         warnings.append(f"Replay dropped packets: {stream_health['dropped_packets']}")
+    if metrics.get("decoder_task_gap") is not None and float(metrics["decoder_task_gap"]) > 0.25:
+        warnings.append("Decoder accuracy is materially higher than closed-loop target acquisition.")
     return warnings
 
 

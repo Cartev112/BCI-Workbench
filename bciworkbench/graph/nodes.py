@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from bciworkbench.decoders.base import DecoderResult
 from bciworkbench.decoders.sklearn import SklearnDecoder
 from bciworkbench.graph.context import RunContext
 from bciworkbench.graph.node import Node
 from bciworkbench.ontology.packets import FeaturePacket, SignalPacket, WindowPacket
 from bciworkbench.sources.factory import build_source
+from bciworkbench.tasks.cursor import run_cursor_task
 from bciworkbench.transforms.features import BandpowerTransform, ERPFeatureTransform
 from bciworkbench.transforms.windowing import TrialWindowTransform
 
@@ -75,6 +77,24 @@ class DecoderNode(Node):
         context.artifacts["decoder_result"] = result
         context.artifacts["predictions"] = result.predictions
         return result
+
+
+class TaskNode(Node):
+    def __init__(self, task_type: str, params: dict[str, Any]) -> None:
+        super().__init__(f"task.{task_type}", "task", params)
+        self.task_type = task_type
+
+    def process(self, payload: DecoderResult, context: RunContext) -> DecoderResult:
+        if not isinstance(payload, DecoderResult):
+            raise TypeError("TaskNode expected a DecoderResult")
+        if self.task_type != "cursor_1d":
+            return payload
+        result = run_cursor_task(payload.predictions, self.params)
+        context.artifacts["task_states"] = result.states
+        context.artifacts["feedback"] = result.feedback
+        context.artifacts["task_metrics"] = result.metrics
+        context.artifacts["task_rows"] = result.rows
+        return payload
 
 
 def _feature_transform(step_type: str, params: dict[str, Any]):

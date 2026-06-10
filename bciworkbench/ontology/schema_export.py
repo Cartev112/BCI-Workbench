@@ -91,7 +91,20 @@ def experiment_json_schema() -> dict[str, Any]:
             "task": {
                 "type": "object",
                 "required": ["type"],
-                "properties": {"type": {"type": "string", "enum": ["motor_imagery_classification", "p300_classification"]}},
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["motor_imagery_classification", "p300_classification", "cursor_1d"],
+                    },
+                    "target_position": {"type": "number", "exclusiveMinimum": 0},
+                    "target_radius": {"type": "number", "minimum": 0},
+                    "target_dwell_steps": {"type": "integer", "minimum": 1},
+                    "step_size": {"type": "number", "exclusiveMinimum": 0},
+                    "control_interval_s": {"type": "number", "exclusiveMinimum": 0},
+                    "feedback_delay_ms": {"type": "number", "minimum": 0},
+                    "confidence_threshold": {"type": "number", "minimum": 0, "maximum": 1},
+                    "reset_on_target_change": {"type": "boolean"},
+                },
                 "additionalProperties": True,
             },
             "metrics": {"type": "array", "items": {"type": "string"}},

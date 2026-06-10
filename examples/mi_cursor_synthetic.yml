@@ -1,0 +1,50 @@
+schema_version: "0.1"
+name: mi_cursor_synthetic
+paradigm: motor_imagery
+mode: synthetic
+random_seed: 11
+output_dir: runs
+
+source:
+  type: synthetic_motor_imagery
+  duration_s: 150
+  sampling_rate: 250
+  n_channels: 16
+  n_trials: 90
+  trial_duration_s: 2.5
+  inter_trial_s: 0.5
+  snr_db: -3
+  subject:
+    motor_imagery_vividness: 1.0
+    attention: 0.9
+    fatigue_rate: 0.001
+  session:
+    amplitude_drift: 0.05
+    marker_jitter_ms: 5.0
+    feedback_delay_ms: 80.0
+
+pipeline:
+  - type: window
+    length_s: 1.5
+    offset_s: 0.3
+  - type: bandpower
+  - type: decoder
+    estimator: nearest_centroid
+    calibration_fraction: 0.6
+
+task:
+  type: cursor_1d
+  target_position: 1.0
+  target_radius: 0.2
+  target_dwell_steps: 1
+  step_size: 1.0
+  control_interval_s: 0.5
+  feedback_delay_ms: 80.0
+  confidence_threshold: 0.0
+
+metrics:
+  - balanced_accuracy
+  - target_acquisition_rate
+  - mean_time_to_target_s
+  - path_efficiency
+  - false_activation_rate
