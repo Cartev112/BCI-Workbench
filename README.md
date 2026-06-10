@@ -1,85 +1,252 @@
 # BCI Workbench
 
-BCI Workbench is a Python-first systems workbench for BCI architecture experiments.
+BCI Workbench is a Python SDK for defining, simulating, replaying, evaluating,
+and reporting brain-computer interface pipelines with consistent runtime
+artifacts.
 
-The goal is to define a BCI pipeline once and run it against synthetic subjects, public datasets, recorded streams, replayed real-time streams, and live hardware while preserving comparable ontology, timing, metrics, and run artifacts.
+The SDK is designed around one operational contract: define a BCI architecture
+once, then run it against synthetic subjects, public datasets, recorded streams,
+and replayed real-time streams while preserving comparable ontology, timing,
+metrics, provenance, and reports.
 
-The current implementation supports deterministic synthetic BCI paths plus replay timing for recorded streams:
+> Status: pre-1.0 research and engineering workbench. The current implementation
+> is suitable for architecture experiments, controlled synthetic stress tests,
+> replay timing evaluation, and reproducible run reports. It is not a clinical
+> or medical-device system.
+
+## What It Provides
+
+BCI Workbench packages the core components needed to evaluate BCI systems beyond
+offline classifier accuracy:
+
+- A typed ontology for signals, events, windows, features, intents, task states,
+  feedback, and adaptation updates.
+- A deterministic graph runtime with per-node telemetry.
+- Synthetic motor imagery and P300 sources with explicit subject, session,
+  artifact, drift, and timing parameters.
+- Offline adapters for MNE Raw FIF and MOABB BNCI2014_001.
+- XDF replay support with deterministic scheduler modes and backlog telemetry.
+- Decoder adapters for sklearn-style models and optional pyRiemann MDM.
+- Closed-loop `cursor_1d` task evaluation.
+- Adaptation interfaces with update logs and stability metrics.
+- StressBench benchmark suites for stressor and architecture robustness.
+- Reproducible run directories with JSON, CSV, JSONL, model, provenance, and
+  HTML report artifacts.
+
+## Core Workflow
 
 ```text
-synthetic motor imagery -> trial windows -> bandpower features -> decoder -> metrics/report
-synthetic P300 oddball -> event windows -> ERP features -> decoder -> metrics/report
-XDF replay source -> replay scheduler -> existing window/feature/decoder pipeline -> latency/backlog artifacts
-synthetic motor imagery -> decoder predictions -> 1D cursor task -> feedback/task metrics/report
-synthetic motor imagery -> decoder predictions -> adaptation node -> adaptation metrics/update log
+source -> windowing -> features -> decoder -> optional adaptation -> optional task -> reports
 ```
 
-## Quickstart
+Implemented paths include:
 
-From a fresh checkout:
+```text
+synthetic motor imagery -> bandpower -> decoder -> metrics/report
+synthetic P300 oddball -> ERP features -> decoder -> metrics/report
+XDF replay -> scheduler telemetry -> existing decoder pipeline -> latency report
+motor imagery decoder -> cursor_1d task -> feedback/task metrics/report
+decoder predictions -> adaptation node -> update log/stability metrics
+StressBench architecture cards -> stressor matrix -> robustness report
+```
+
+## Installation
+
+Core development install:
 
 ```powershell
 pip install -e ".[dev]"
+```
+
+Optional integration extras:
+
+| Extra | Enables |
+| --- | --- |
+| `bciworkbench[mne]` | MNE Raw FIF source adapter |
+| `bciworkbench[moabb]` | MOABB dataset source adapter |
+| `bciworkbench[pyriemann]` | pyRiemann MDM decoder |
+| `bciworkbench[xdf]` | Real `.xdf` replay via `pyxdf` |
+
+Optional dependencies are guarded. If an adapter is requested without its extra,
+the SDK raises an install hint instead of failing at import time.
+
+## Quickstart
+
+Run a deterministic synthetic motor imagery experiment:
+
+```powershell
 bciworkbench validate examples/mi_synthetic.yml
 bciworkbench run examples/mi_synthetic.yml
+```
+
+The `run` command prints the generated report path:
+
+```text
+runs/<run_id>/report.html
+```
+
+Run the test suite:
+
+```powershell
 pytest
 ```
 
-The `run` command prints the generated `runs/<run_id>/report.html` path.
+Generate the experiment JSON Schema:
 
-Useful next commands:
+```powershell
+bciworkbench schema experiment
+```
+
+## Example Commands
+
+Synthetic P300:
 
 ```powershell
 bciworkbench validate examples/p300_synthetic.yml
-bciworkbench schema experiment
 bciworkbench run examples/p300_synthetic.yml
-bciworkbench run examples/mi_cursor_synthetic.yml
-bciworkbench run examples/mi_synthetic_adaptive.yml
-bciworkbench compare runs/<run_a> runs/<run_b>
-bciworkbench stressbench examples/stressbench_mi.yml
-bciworkbench stressbench examples/stressbench_architectures.yml
-pytest
 ```
 
-The run command writes artifacts under `runs/<run_id>/`, including `ontology_schema.json`, `graph.json`, `telemetry.jsonl`, `source_metadata.json`, `metrics.json`, event/window/prediction CSV files, provenance, and a simple HTML report. Replay runs also write `latency_trace.csv`, `latency_trace.json`, and `stream_health.json`. Closed-loop cursor runs also write `task_metrics.json`, `task_states.csv`, and `feedback.csv`. Adaptive runs also write `adaptation_metrics.json`, `adaptation.jsonl`, and `predictions_before_adaptation.csv`.
+Closed-loop cursor task:
 
-## Current Scope
+```powershell
+bciworkbench run examples/mi_cursor_synthetic.yml
+```
 
-Implemented now:
+Adaptive decoder comparison:
 
-- YAML experiment validation.
-- Core ontology dataclasses for channels, events, packets, predictions, and task state.
-- JSON Schema export for experiment configs and ontology artifacts.
-- Deterministic linear graph runtime with node telemetry.
-- Explicit synthetic subject/session profiles with artifact, drift, timing, and ERP parameters.
-- StressBench preset matrix with aggregate robustness scoring for synthetic checks.
-- StressBench architecture cards for MI bandpower + LDA, MI covariance + optional pyRiemann MDM, and P300 ERP + LDA.
-- StressBench scores for accuracy robustness, decoder latency, and calibration efficiency.
-- Domain randomization helpers for sampling subject/session stressor ranges.
-- Deterministic synthetic motor imagery source with ground-truth trial events.
-- Deterministic synthetic P300 oddball source with target/non-target stimulus events.
-- Windowing, bandpower feature extraction, and simple ERP feature extraction.
-- Sklearn-style decoder adapter with LDA, logistic regression, model persistence, model cards, and a deterministic nearest-centroid fallback.
-- Optional pyRiemann MDM adapter with dependency guard.
-- MNE Raw FIF source adapter and initial MOABB BNCI2014_001 adapter with optional dependency guards.
-- XDF replay adapter with deterministic fastest, real-time, scaled, and stepped scheduler modes.
-- Replay packet arrival, backlog, queue-depth, latency trace, and stream health artifacts.
-- Closed-loop `cursor_1d` task runtime with feedback packets, task states, feedback delay modeling, and task success metrics.
-- Adaptation interfaces with no-op, supervised batch, confidence-gated, and drift-triggered recalibration adapters.
-- AdaptationPacket logging plus stability metrics and report warnings for harmful updates.
-- Basic decoder metrics and run reports.
-- CLI commands: `validate`, `schema`, `run`, `report`, `compare`, and `stressbench`.
+```powershell
+bciworkbench run examples/mi_synthetic_adaptive.yml
+```
 
-Planned next:
+StressBench preset matrix:
 
-- LSL and BrainFlow live sources.
-- Broader closed-loop task environments and richer online decoder update backends.
-- Broader public benchmark presets and documentation guides.
+```powershell
+bciworkbench stressbench examples/stressbench_mi.yml
+```
 
-## Guides
+StressBench architecture cards:
+
+```powershell
+bciworkbench stressbench examples/stressbench_architectures.yml
+```
+
+Run comparison:
+
+```powershell
+bciworkbench compare runs/<run_a> runs/<run_b>
+```
+
+## Configuration Model
+
+Experiments are YAML files with these top-level sections:
+
+| Section | Purpose |
+| --- | --- |
+| `source` | Synthetic, offline, or replay signal source |
+| `pipeline` | Windowing, feature extraction, and decoder steps |
+| `task` | Classification or closed-loop task definition |
+| `adaptation` | Optional decoder/prediction update policy |
+| `metrics` | Requested metrics for reporting |
+| `metadata` | User-defined experiment metadata |
+
+Example pipeline:
+
+```yaml
+source:
+  type: synthetic_motor_imagery
+  duration_s: 120
+  sampling_rate: 250
+
+pipeline:
+  - type: window
+    length_s: 1.5
+    offset_s: 0.3
+  - type: bandpower
+  - type: decoder
+    estimator: lda
+    calibration_fraction: 0.6
+
+task:
+  type: motor_imagery_classification
+  classes: [left, right]
+```
+
+## Run Artifacts
+
+Every run writes a self-contained directory under `runs/<run_id>/`.
+
+Core artifacts:
+
+- `resolved_config.json`
+- `ontology_schema.json`
+- `graph.json`
+- `telemetry.jsonl`
+- `channel_schema.json`
+- `source_metadata.json`
+- `metrics.json`
+- `events.csv`
+- `windows.csv`
+- `features.csv`
+- `predictions.csv`
+- `model/model_card.json`
+- `model/decoder.pkl`
+- `provenance.json`
+- `report.html`
+
+Replay runs also write:
+
+- `latency_trace.csv`
+- `latency_trace.json`
+- `stream_health.json`
+
+Closed-loop task runs also write:
+
+- `task_metrics.json`
+- `task_states.csv`
+- `feedback.csv`
+
+Adaptive runs also write:
+
+- `adaptation_metrics.json`
+- `adaptation.jsonl`
+- `predictions_before_adaptation.csv`
+
+## StressBench
+
+StressBench evaluates architecture robustness under controlled stressors. It can
+run a custom base config or built-in architecture cards.
+
+Built-in architecture cards:
+
+- `mi_bandpower_lda`
+- `mi_covariance_pyriemann_mdm`
+- `p300_erp_lda`
+
+Built-in stressor presets include clean, low SNR, blink contamination, muscle
+noise, channel dropout, electrode shift, session drift, marker jitter, fatigue,
+and delayed feedback.
+
+StressBench reports include:
+
+- clean-relative robustness
+- weakest preset
+- largest drop from clean
+- decoder latency
+- calibration efficiency
+- composite StressBench score
+- per-run links and errors or skipped optional architectures
+
+## Documentation
 
 - [Ontology Guide](docs/ontology.md)
 - [Source Adapter Guide](docs/source_adapters.md)
 - [Simulation Realism Guide](docs/simulation_realism.md)
 - [Report Interpretation Guide](docs/reports.md)
 - [Non-Goals And Limitations](docs/limitations.md)
+
+## Current Boundaries
+
+The SDK currently uses a deterministic linear runtime. Live LSL and BrainFlow
+sources are planned but not implemented in this branch. Synthetic sources and
+closed-loop task models are explicit engineering models for controlled testing;
+they are not validated physiological models.
